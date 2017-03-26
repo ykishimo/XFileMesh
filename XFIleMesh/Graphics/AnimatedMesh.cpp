@@ -27,8 +27,8 @@ CAnimatedMesh::CAnimatedMesh(TCHAR *pFilename)
 	m_pAnimator = NULL;
 	m_dwNumAnimations = 0;
 
-	//m_pRenderer = NULL;
-	//m_pRenderer = new CSimpleMeshRenderer();
+	//m_smrRenderer = NULL;
+	//m_smrRenderer = new CSimpleMeshRenderer();
 
 	MeshFrame *pFrame = NULL;
 	if (SUCCEEDED( CXFileParser::CreateMesh(pFilename,&pFrame,&m_ppAnimationSets,&m_dwNumAnimations))){
@@ -39,10 +39,10 @@ CAnimatedMesh::CAnimatedMesh(TCHAR *pFilename)
 
 		m_pAnimator->SetTrackAnimation(0,0,1.0,true);
 
-		MeshFrame *pOld = m_pRenderer.ReplaceRootFrame(pFrame);
+		MeshFrame *pOld = m_smrRenderer.ReplaceRootFrame(pFrame);
 		SAFE_DELETE(pOld)
 	}
-	if (FAILED(m_pRenderer.AdjustVertexFormat())){
+	if (FAILED(m_smrRenderer.AdjustVertexFormat())){
 		DeleteObjects();
 	}
 }
@@ -68,51 +68,51 @@ void CAnimatedMesh::DeleteObjects(){
 void	CAnimatedMesh::Update(DOUBLE timeElapsed, DirectX::XMMATRIX *pMatWorld){
 	m_pAnimator->AdvanceTime(timeElapsed);
 	m_pAnimator->AdjustAnimation();
-	AdjustFrameMatrices(m_pRenderer.GetRootFrame(),pMatWorld);
+	AdjustFrameMatrices(m_smrRenderer.GetRootFrame(),pMatWorld);
 }
 
 void	CAnimatedMesh::AdjustPose(DirectX::XMMATRIX *pMatWorld){
-	AdjustFrameMatrices(m_pRenderer.GetRootFrame(),pMatWorld);
+	AdjustFrameMatrices(m_smrRenderer.GetRootFrame(),pMatWorld);
 }
 
 //  Inclusion to Mesh Renderer
 #if 1
 BOOL	CAnimatedMesh::IsPrepared(){
-	return m_pRenderer.IsPrepared();
+	return m_smrRenderer.IsPrepared();
 }
 void	CAnimatedMesh::Render(ID3D11DeviceContext *pContext){
-	m_pRenderer.Render(pContext);
+	m_smrRenderer.Render(pContext);
 }
 void	CAnimatedMesh::SetWorldMatrix(DirectX::XMMATRIX *pMatWorld){
-	m_pRenderer.SetWorldMatrix(pMatWorld);
+	m_smrRenderer.SetWorldMatrix(pMatWorld);
 }
 void	CAnimatedMesh::SetViewMatrix(DirectX::XMMATRIX  *pMatView){
-	m_pRenderer.SetViewMatrix(pMatView);
+	m_smrRenderer.SetViewMatrix(pMatView);
 }
 void	CAnimatedMesh::SetProjectionMatrix(DirectX::XMMATRIX *pMatProjection){
-	m_pRenderer.SetProjectionMatrix(pMatProjection);
+	m_smrRenderer.SetProjectionMatrix(pMatProjection);
 }
 
 void	CAnimatedMesh::SetLightDir(DirectX::XMFLOAT3 *pVecDir){
-	m_pRenderer.SetLightDir(pVecDir);
+	m_smrRenderer.SetLightDir(pVecDir);
 }
 void	CAnimatedMesh::SetLightDiffuse(DirectX::XMFLOAT3 *pVecDiffuse){
-	m_pRenderer.SetLightDiffuse(pVecDiffuse);
+	m_smrRenderer.SetLightDiffuse(pVecDiffuse);
 }
 void	CAnimatedMesh::SetLightAmbient(DirectX::XMFLOAT3 *pVecAmbient){
-	m_pRenderer.SetLightAmbient(pVecAmbient);
+	m_smrRenderer.SetLightAmbient(pVecAmbient);
 }
 
 MeshFrame	*CAnimatedMesh::GetRootFrame(){
-	return	m_pRenderer.GetRootFrame();
+	return	m_smrRenderer.GetRootFrame();
 }
 
 HRESULT CAnimatedMesh::RestoreDeviceObjects(ID3D11DeviceContext *pContext){
-	return m_pRenderer.RestoreDeviceObjects(pContext);
+	return m_smrRenderer.RestoreDeviceObjects(pContext);
 }
 
 HRESULT CAnimatedMesh::ReleaseDeviceObjects(){
-	return m_pRenderer.ReleaseDeviceObjects();
+	return m_smrRenderer.ReleaseDeviceObjects();
 }
 #endif
 

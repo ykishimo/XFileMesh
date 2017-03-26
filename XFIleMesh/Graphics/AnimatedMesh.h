@@ -39,7 +39,7 @@ public:
 		return _mm_free(p);
 	}
 protected:
-	CSimpleMeshRenderer m_pRenderer;	//  has-a inclusion to avoid multiplex inheritance
+	CSimpleMeshRenderer m_smrRenderer;	//  has-a inclusion to avoid multiplex inheritance
 	void DeleteObjects();
 	AnimationSet **m_ppAnimationSets;
 	IAnimator    *m_pAnimator;
