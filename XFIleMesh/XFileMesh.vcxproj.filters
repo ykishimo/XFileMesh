@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="ソース ファイル">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
     <Filter Include="ヘッダー ファイル">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
@@ -15,6 +11,25 @@
     </Filter>
     <Filter Include="Graphics">
       <UniqueIdentifier>{2d8b7b11-ed51-4956-bc7c-465eaab0e31c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\RenderersAndControllers">
+      <UniqueIdentifier>{b5211920-893d-451d-be68-6f1bfc3188f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\FontAndSprites">
+      <UniqueIdentifier>{1fcbce34-6a63-43ab-bde4-648bd107d913}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Graphics\StructuresOfMeshAndLoader">
+      <UniqueIdentifier>{5793a7f0-6c6b-4a2f-819d-77c916571972}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\CommonUtilities">
+      <UniqueIdentifier>{3097ed72-c3c4-49cd-ae52-53a07761a091}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\TextureLoaderAndUtilities">
+      <UniqueIdentifier>{f3c780fd-62b5-4de8-af1b-0ab6b9bee918}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -33,77 +48,77 @@
     <ClInclude Include="BurnUp.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\AnimatedMesh.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\Animation.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\Animator.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\binaryx.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\BoneRenderer.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\D3D11Font.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\D3D11PointSprite.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\D3D11Sprite.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\D3D11TextureDB.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
     <ClInclude Include="Graphics\D3DContext.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\ddsfunctions.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\DeviceDependentObject.h">
       <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\FilenameDecoder.h">
-      <Filter>Graphics</Filter>
+    <ClInclude Include="Graphics\Animation.h">
+      <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\binaryx.h">
+      <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\AnimatedMesh.h">
+      <Filter>Graphics\RenderersAndControllers</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Animator.h">
+      <Filter>Graphics\RenderersAndControllers</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\BoneRenderer.h">
+      <Filter>Graphics\RenderersAndControllers</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D11Font.h">
+      <Filter>Graphics\FontAndSprites</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D11PointSprite.h">
+      <Filter>Graphics\FontAndSprites</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D11Sprite.h">
+      <Filter>Graphics\FontAndSprites</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D11TextureDB.h">
+      <Filter>Graphics\TextureLoaderAndUtilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\ddsfunctions.h">
+      <Filter>Graphics\TextureLoaderAndUtilities</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\HighResTimer.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\CommonUtilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\FilenameDecoder.h">
+      <Filter>Graphics\CommonUtilities</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\IMesh.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\RenderersAndControllers</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Mesh.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\MeshFrameTracker.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\MTAnimator.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\rfc1951.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\RenderersAndControllers</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\SimpleMesh.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\RenderersAndControllers</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\SkinnedMesh.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\RenderersAndControllers</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\rfc1951.h">
+      <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\TextureLoader.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\TextureLoaderAndUtilities</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\tgafunctions.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\TextureLoaderAndUtilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\MTAnimator.h">
+      <Filter>Graphics\RenderersAndControllers</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\XFileParser.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -116,71 +131,71 @@
     <ClCompile Include="BurnUp.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\AnimatedMesh.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\Animation.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\Animator.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\BoneRenderer.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\D3D11Font.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\D3D11PointSprite.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\D3D11Sprite.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\D3D11TextureDB.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\D3DContext.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\ddsfunctions.cpp">
-      <Filter>Graphics</Filter>
+    <ClCompile Include="Graphics\Animation.cpp">
+      <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\FilenameDecoder.cpp">
-      <Filter>Graphics</Filter>
+    <ClCompile Include="Graphics\AnimatedMesh.cpp">
+      <Filter>Graphics\RenderersAndControllers</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Animator.cpp">
+      <Filter>Graphics\RenderersAndControllers</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\BoneRenderer.cpp">
+      <Filter>Graphics\RenderersAndControllers</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\D3D11Font.cpp">
+      <Filter>Graphics\FontAndSprites</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\D3D11PointSprite.cpp">
+      <Filter>Graphics\FontAndSprites</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\D3D11Sprite.cpp">
+      <Filter>Graphics\FontAndSprites</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\D3D11TextureDB.cpp">
+      <Filter>Graphics\TextureLoaderAndUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\ddsfunctions.cpp">
+      <Filter>Graphics\TextureLoaderAndUtilities</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\HighResTimer.cpp">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\CommonUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\FilenameDecoder.cpp">
+      <Filter>Graphics\CommonUtilities</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\IMesh.cpp">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\RenderersAndControllers</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\Mesh.cpp">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\MeshFrameTracker.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\MTAnimator.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\rfc1951.cpp">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\RenderersAndControllers</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\SimpleMesh.cpp">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\RenderersAndControllers</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\SkinnedMesh.cpp">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\RenderersAndControllers</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\rfc1951.cpp">
+      <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\TextureLoader.cpp">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\TextureLoaderAndUtilities</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\tgafunctions.cpp">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\TextureLoaderAndUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\MTAnimator.cpp">
+      <Filter>Graphics\RenderersAndControllers</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\XFileParser.cpp">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
