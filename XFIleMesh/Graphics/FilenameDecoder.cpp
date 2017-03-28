@@ -1,3 +1,7 @@
+//
+// @file FilenameDecoder.cpp
+// @brief implementation of CFilenameDecoder
+//
 #include "StdAfx.h"
 #include <TCHAR.h>
 #include "FilenameDecoder.h"
@@ -47,7 +51,7 @@ CFilenameDecoder::~CFilenameDecoder(void)
 	SAFE_DELETE(m_strFilename);
 }
 
-//	パス名をリンクリストに分解する
+//	split pathname with directory-separator and store them to linked list
 INT		CFilenameDecoder::Decode(TCHAR *pFilename, VOID *pRootNode){
 	TokenNode *pRoot, *pNode;
 	pRoot = (TokenNode*)pRootNode;
@@ -86,7 +90,7 @@ INT		CFilenameDecoder::Decode(TCHAR *pFilename, VOID *pRootNode){
 	return	numNodes;
 }
 
-//	リンクリストに分解されたパス情報を、文字列にまとめなおす
+//	assemble pathname string from linked list.
 void CFilenameDecoder::CreatePathString(VOID *pRootNode, INT numNodes){
 	TokenNode *pNode, *pRoot;
 	INT	sizString = 0;
@@ -114,7 +118,7 @@ void CFilenameDecoder::CreatePathString(VOID *pRootNode, INT numNodes){
 		p += pNode->len;
 	}
 
-	//	ファイル名の格納
+	//	store the filename
 	pNode = pRoot->prev;
 	if (pNode != pRoot){
 		m_strFilename = new TCHAR[pNode->len + 1];
@@ -123,7 +127,7 @@ void CFilenameDecoder::CreatePathString(VOID *pRootNode, INT numNodes){
 }
 
 //
-//	. および .. 表記のディレクトリを正しく解釈して取り除く
+//	remove "." and ".." without changing what it means.
 //
 INT	CFilenameDecoder::InterpretTheDotDirectory(VOID *pRootNode,INT numNodes){
 	TokenNode *pNode, *pRoot, *pNext;
@@ -159,7 +163,7 @@ INT	CFilenameDecoder::InterpretTheDotDirectory(VOID *pRootNode,INT numNodes){
 }
 
 
-//	パス名を得る
+//	Get the pathname from this object
 void CFilenameDecoder::GetPath(DWORD *length, TCHAR *pBuffer){
 	if (m_strPath == NULL){
 		*length = 0;
@@ -172,7 +176,7 @@ void CFilenameDecoder::GetPath(DWORD *length, TCHAR *pBuffer){
 	}
 }
 
-//	パス名を得る
+//	Get the body filename from this object.
 void CFilenameDecoder::GetFilename(DWORD *length, TCHAR *pBuffer){
 	if (m_strFilename == NULL){
 		*length = 0;
@@ -185,7 +189,7 @@ void CFilenameDecoder::GetFilename(DWORD *length, TCHAR *pBuffer){
 	}
 }
 
-//	全ての名を得る
+//	Get full-path filename of what this object indicates.
 void CFilenameDecoder::GetFullname(DWORD *length, TCHAR *pBuffer){
 	if (m_strFilename == NULL && m_strPath== NULL){
 		*length = 0;

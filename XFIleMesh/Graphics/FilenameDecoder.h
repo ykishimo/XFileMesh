@@ -1,7 +1,10 @@
 #pragma once
 
-//	ファイル名をデコードするためのクラス
-//	※スレッドセーフでない
+//
+//  @class CFilenameDecoder
+//  @brief decodes the path string and
+//       try to understand where the file is.
+//
 class CFilenameDecoder
 {
 public:

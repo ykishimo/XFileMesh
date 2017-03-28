@@ -16,7 +16,14 @@
 #pragma comment(lib,"d3dcompiler.lib")
 void SaveShaderCode(BYTE *pData, DWORD dwSize, TCHAR *pFilename, char *pFuncName){
 	FILE *fp;
-	_tfopen_s(&fp,pFilename,_T("w"));
+	size_t len = _tcslen(pFilename);
+	len += _tcslen(_T("Graphics\\"));
+	TCHAR *pFilename2 = new TCHAR[++len];
+	_tcscpy_s(pFilename2,len,_T("Graphics\\"));
+	_tcscat_s(pFilename2,len,pFilename);
+
+	_tfopen_s(&fp,pFilename2,_T("w"));
+	SAFE_DELETE_ARRAY(pFilename2);
 	int		rest = dwSize;
 	if (fp != NULL){
 		fprintf_s(fp,"const unsigned char %s[]={\n",pFuncName);
@@ -176,7 +183,6 @@ protected:
 	BOOL				m_bDepthEnable;
 	BOOL				m_bDepthWriteEnable;
 
-	//D3DContextPrivateData   *m_pData;
 	HWND m_hWnd;
 	BOOL m_bWindowed;
 };

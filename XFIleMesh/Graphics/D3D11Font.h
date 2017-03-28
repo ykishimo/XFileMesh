@@ -1,3 +1,8 @@
+//
+//	class CD3D11Font
+//	Desc: Ank Font on Direct3D11
+//		Debug purpose
+//
 #pragma once
 
 #include "DeviceDependentObject.h"

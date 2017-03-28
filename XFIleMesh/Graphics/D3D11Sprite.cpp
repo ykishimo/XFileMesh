@@ -1,7 +1,3 @@
-//
-//	class CD3D11Sprite
-//	Desc: This class implements 2D sprites on Direct3D11
-//	
 #include "stdafx.h"
 #include <d3d11.h>
 #include <directxmath.h>
@@ -26,8 +22,8 @@ Texture2D	diffuseTexture : register(t0);\n\
 //-----------------------------------------------------------------------------------\n\
 cbuffer VSConstantBuffer : register( b0 )\n\
 {\n\
-    matrix  Proj;   //  射影行列\n\
-	float4  Color;  //  モジュレ―トする色\n\
+    matrix  Proj;   //  pojection matrix.\n\
+	float4  Color;  //  a color to modulate.\n\
 };\n\
 \n\
 \n\
@@ -36,8 +32,8 @@ cbuffer VSConstantBuffer : register( b0 )\n\
 //-----------------------------------------------------------------------------------\n\
 struct VSInput\n\
 {\n\
-    float3 Position : POSITION;     //	位置座標\n\
-	float2 texCoord : TEXCOORD0;	//  テクスチャ座標\n\
+    float3 Position : POSITION;     //	position\n\
+	float2 texCoord : TEXCOORD0;	//  texture coordinates\n\
 };\n\
 \n\
 //-----------------------------------------------------------------------------------\n\
@@ -45,22 +41,22 @@ struct VSInput\n\
 //-----------------------------------------------------------------------------------\n\
 struct GSPSInput\n\
 {\n\
-    float4 Position : SV_POSITION;  //  位置座標\n\
-	float2 texCoord : TEXCOORD0;	//  テクスチャ座標\n\
-	float4 diffuse  : COLOR;        //  文字色\n\
+    float4 Position : SV_POSITION;  //  position\n\
+	float2 texCoord : TEXCOORD0;	//  texture coordinates\n\
+	float4 diffuse  : COLOR;        //  color of fonts.\n\
 };\n\
 \n\
 //-----------------------------------------------------------------------------------\n\
-//	頂点シェーダエントリーポイント\n\
+//	entry point of the vertex shader.\n\
 //-----------------------------------------------------------------------------------\n\
 GSPSInput VSFunc( VSInput input )\n\
 {\n\
     GSPSInput output = (GSPSInput)0;\n\
 \n\
-    // 入力データをfloat4 へ変換.\n\
+    // conver the input data to float4.\n\
 	float4 pos = float4( input.Position, 1.0f );\n\
 \n\
-	// 射影空間に変換.\n\
+	// transform to projection space.\n\
     float4 projPos  = mul( Proj,  pos );\n\
 \n\
 	output.Position = projPos;\n\
@@ -70,7 +66,7 @@ GSPSInput VSFunc( VSInput input )\n\
 }\n\
 \n\
 //------------------------------------------------------------------------------------\n\
-//	ピクセルシェーダエントリーポイント\n\
+//	Entry point of the pixel shader\n\
 //------------------------------------------------------------------------------------\n\
 float4 PSFunc( GSPSInput psin ) : SV_TARGET0\n\
 {\n\
@@ -86,7 +82,7 @@ float4 PSFuncNoTex( GSPSInput psin ) : SV_TARGET0\n\
 #endif
 
 
-//  テクスチャ管理用のノード構造体
+//  structure to keep a texture.
 struct SpriteTexture{
 	TCHAR				*pFilename;
 	ID3D11Texture2D		*pTexture;
@@ -106,16 +102,10 @@ struct SpriteTexture{
 	}
 };
 
-//  テクスチャ管理用データ
-//  stl の展開を局所化するためローカルデータ構造としておく
-struct SpriteDataContext{
-	std::vector<SpriteTexture *>	pSpriteTextures;
-};
-
 //  Vertex Structure
 typedef struct {
-	DirectX::XMFLOAT3 position;     //  位置座標
-	DirectX::XMFLOAT2 texture;      //  テクスチャ座標
+	DirectX::XMFLOAT3 position;     //  position
+	DirectX::XMFLOAT2 texture;      //  texture coordinates
 }	SpriteVertex;
 
 //  Constant buffer structure
@@ -125,6 +115,10 @@ typedef struct {
 }	SpriteConstantBuffer;
 
 
+//
+//	class CD3D11Sprite
+//	Desc: This class implements 2D sprites on Direct3D11
+//	
 struct SpriteDataContext;
 class CD3D11Sprite : public ID3D11Sprite
 {
@@ -156,7 +150,8 @@ protected:
 	virtual HRESULT ReleaseInstanceObjects();
 
 	void InitFields();
-	SpriteDataContext   *m_pDataContext;
+
+	std::vector<SpriteTexture *>	*m_pSpriteTextures;
 
 	ID3D11DeviceContext	*m_pDeviceContext;
 	ID3D11Device        *m_pDevice;
@@ -226,9 +221,10 @@ ID3D11Sprite::~ID3D11Sprite()
 CD3D11Sprite::CD3D11Sprite(void)
 {
 	InitFields();
-	m_pDataContext = new SpriteDataContext;
+	//m_pDataContext = new SpriteDataContext;
 	m_bInitialized = false;
 	++m_iShaderReferenceCount;
+	m_pSpriteTextures = new std::vector<SpriteTexture *>();
 }
 
 //
@@ -246,19 +242,20 @@ CD3D11Sprite::~CD3D11Sprite(void)
 	SAFE_RELEASE(m_pDeviceContext);
 
 	std::vector<SpriteTexture *>::iterator it;
-	it = m_pDataContext->pSpriteTextures.begin();
-	while(it != m_pDataContext->pSpriteTextures.end()){
+	it = m_pSpriteTextures->begin();
+	while(it != m_pSpriteTextures->end()){
 		SAFE_DELETE(*it);
 		++it;
 	}
-	SAFE_DELETE(m_pDataContext);
+	SAFE_DELETE(m_pSpriteTextures);
 }
 
 //  全フィールドの初期化
 void CD3D11Sprite::InitFields(){
 
-	m_pDataContext = NULL;
-	m_pDeviceContext = NULL;
+	//m_pDataContext = NULL;
+	//m_pDeviceContext = NULL;
+	m_pSpriteTextures = NULL;
 	m_pDevice = NULL;
 	m_pTextureSamplerState = NULL;
 	m_pBlendState = NULL;
@@ -357,10 +354,10 @@ HRESULT CD3D11Sprite::RestoreInstanceObjects(){
 	//	
 	HRESULT hr;
 
-	if (m_pDataContext){
+	if (m_pSpriteTextures){
 		std::vector<SpriteTexture*>::iterator it;
-		it = m_pDataContext->pSpriteTextures.begin();
-		while (it != m_pDataContext->pSpriteTextures.end()){
+		it = m_pSpriteTextures->begin();
+		while (it != m_pSpriteTextures->end()){
 			if (*it != NULL){
 				ID3D11Texture2D		*pTexture = NULL;
 				ID3D11ShaderResourceView	*pTextureShaderResourceView = NULL;
@@ -480,10 +477,10 @@ HRESULT CD3D11Sprite::RestoreInstanceObjects(){
 }
 
 HRESULT CD3D11Sprite::ReleaseInstanceObjects(){
-	if (m_pDataContext){
+	if (m_pSpriteTextures){
 		std::vector<SpriteTexture*>::iterator it;
-		it = m_pDataContext->pSpriteTextures.begin();
-		while (it != m_pDataContext->pSpriteTextures.end()){
+		it = m_pSpriteTextures->begin();
+		while (it != m_pSpriteTextures->end()){
 			if (*it != NULL){
 				SAFE_RELEASE((*it)->pTexture);
 				SAFE_RELEASE((*it)->pTextureShaderResourceView);
@@ -617,19 +614,19 @@ void CD3D11Sprite::RemoveShaderCodes(){
 //		pFilename : filename
 //
 void CD3D11Sprite::SetTexture(INT no, TCHAR *pFilename){
-	int count = m_pDataContext->pSpriteTextures.size();
+	int count = m_pSpriteTextures->size();
 	int len;
 	SpriteTexture *pTextureNode;
 	if (no >= count){
 		int add = count - no + 1;
 		for ( int i = 0; i < add ; ++i){
-			m_pDataContext->pSpriteTextures.push_back(NULL);
+			m_pSpriteTextures->push_back(NULL);
 		}
 	}
-	pTextureNode = m_pDataContext->pSpriteTextures[no];
+	pTextureNode = (*m_pSpriteTextures)[no];
 	if (pTextureNode == NULL){
 		pTextureNode = new SpriteTexture;
-		m_pDataContext->pSpriteTextures[no] = pTextureNode;
+		(*m_pSpriteTextures)[no] = pTextureNode;
 	}else{
 		SAFE_DELETE_ARRAY(pTextureNode->pFilename);
 		SAFE_RELEASE(pTextureNode->pTexture);
@@ -643,8 +640,8 @@ void CD3D11Sprite::SetTexture(INT no, TCHAR *pFilename){
 
 INT CD3D11Sprite::GetNumTextures(){
 	INT num = 0;
-	if (m_pDataContext){
-		num = m_pDataContext->pSpriteTextures.size();
+	if (m_pSpriteTextures){
+		num = m_pSpriteTextures->size();
 	}
 	return num;
 }
@@ -684,11 +681,11 @@ void    CD3D11Sprite::Render(ID3D11DeviceContext *pContext, FLOAT x, FLOAT y, FL
 	ID3D11Texture2D			*pTexture = NULL;
 	ID3D11ShaderResourceView *pTextureShaderResourceView = NULL;
 
-	if (m_pDataContext == NULL)
+	if (m_pSpriteTextures == NULL)
 		return;
 
-	if (no >= 0 && no < (INT)m_pDataContext->pSpriteTextures.size()){
-		pSpriteTexture = m_pDataContext->pSpriteTextures[no];
+	if (no >= 0 && no < (INT)m_pSpriteTextures->size()){
+		pSpriteTexture = (*m_pSpriteTextures)[no];
 		if (pSpriteTexture != NULL){
 			pTexture = pSpriteTexture->pTexture;
 			pTextureShaderResourceView = pSpriteTexture->pTextureShaderResourceView;
@@ -697,30 +694,29 @@ void    CD3D11Sprite::Render(ID3D11DeviceContext *pContext, FLOAT x, FLOAT y, FL
 	if (pSpriteTexture == NULL)
 		return;
 
-	//　シェーダを設定して描画.
+	//　install the shaders
 	pContext->VSSetShader( m_pVertexShader, NULL, 0 );
 	pContext->GSSetShader( NULL,			NULL, 0 );
 	if (pTextureShaderResourceView == NULL){
-		pContext->PSSetShader( m_pNoTexPixelShader,  NULL, 0 );	//  テクスチャ無し
+		pContext->PSSetShader( m_pNoTexPixelShader,  NULL, 0 );	//  without texture
 	}else{
-		pContext->PSSetShader( m_pPixelShader,  NULL, 0 );		//  テクスチャ有り
+		pContext->PSSetShader( m_pPixelShader,  NULL, 0 );		//  with texture
 	}
 
-	// 定数バッファの設定.
+	// update the constant buffer.
 	SpriteConstantBuffer cb;
 	cb.matProj  = m_matProj;
 	cb.color = m_vecDiffuse;
 
-	// サブリソースを更新.
 	pContext->UpdateSubresource( m_pConstantBuffer, 0, NULL, &cb, 0, 0 );
 
-	// ジオメトリシェーダに定数バッファを設定.
+	// install the constant data to vertex shader.
 	pContext->VSSetConstantBuffers( 0, 1, &m_pConstantBuffer );
 
 	float blendFactor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 	pContext->OMSetBlendState( m_pBlendState, blendFactor, 0xffffffff );
 
-	// 頂点バッファの設定.
+	// store datas to vertex buffer
 	{
 		D3D11_VIEWPORT  vp;
 		UINT			uiNumViewport = 1;
@@ -765,7 +761,7 @@ void    CD3D11Sprite::Render(ID3D11DeviceContext *pContext, FLOAT x, FLOAT y, FL
 			}
 		}
 
-		// 頂点の定義.
+		//  data of vertices
 		SpriteVertex vertices[] = {
 			{  DirectX::XMFLOAT3( l, t, z ),  DirectX::XMFLOAT2(  tx1,  ty1 ) },
 			{  DirectX::XMFLOAT3( r, t, z ),  DirectX::XMFLOAT2(  tx2,  ty1 ) },
@@ -775,15 +771,15 @@ void    CD3D11Sprite::Render(ID3D11DeviceContext *pContext, FLOAT x, FLOAT y, FL
 		pContext->UpdateSubresource( m_pVertexBuffer, 0, NULL, vertices, 0, 0 );
 		
 	}
-	// 入力アセンブラに頂点バッファを設定.
+	// setup input assembler
 	UINT stride = sizeof( SpriteVertex );
 	UINT offset = 0;
 	pContext->IASetVertexBuffers( 0, 1, &m_pVertexBuffer, &stride, &offset );
 
-	// 入力アセンブラに入力レイアウトを設定.
+	// setup the layout
 	pContext->IASetInputLayout( m_pInputLayout );
 
-	// プリミティブの種類を設定.
+	// setup the primitive type
 	pContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP );
 
 	ID3D11ShaderResourceView* ppShaderResourceViews[] = { pTextureShaderResourceView, 0 };
@@ -798,7 +794,7 @@ void    CD3D11Sprite::Render(ID3D11DeviceContext *pContext, FLOAT x, FLOAT y, FL
 	pContext->PSSetSamplers( 0, 1, ppSamplerStates );
 	pContext->PSSetShaderResources(0, 1, ppShaderResourceViews);
 
-	//  ブレンドステートを元に戻す
+	//  recover the blend state
 	pContext->OMSetBlendState( NULL, blendFactor, 0xffffffff );
 }
 

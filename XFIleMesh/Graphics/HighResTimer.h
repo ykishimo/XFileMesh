@@ -1,10 +1,8 @@
 /*
 *	class CHighResTimer
-*	QueryPerformanceCounter を使用した
-*	高精度な計時機能を提供するクラス。
-*
+*	@brief implementation of High Resolution timer.
+*   @note  Using performance counter.
 */
-
 #ifndef	__HIGHRESTIMER_H__
 #define	__HIGHRESTIMER_H__
 

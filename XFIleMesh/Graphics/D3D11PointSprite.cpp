@@ -1,3 +1,7 @@
+//
+// @file D3D11PointSprite.cpp
+// @brief Implementation of ID3D11PointSprite
+//
 #include "stdafx.h"
 #include <d3d11.h>
 #include <directxmath.h>
@@ -6,7 +10,7 @@
 #include "D3D11PointSprite.h"
 #include "D3DContext.h"
 
-//  テクスチャ管理用のノード構造体
+//  structure to keep a texture.
 struct PointSpriteTexture{
 	TCHAR				*pFilename;
 	ID3D11Texture2D		*pTexture;
@@ -81,7 +85,10 @@ protected:
 	virtual HRESULT RestoreInstanceObjects();
 	virtual HRESULT ReleaseInstanceObjects();
 
-	PointSpriteDataContext   *m_pDataContext;
+	//PointSpriteDataContext   *m_pDataContext;
+	std::vector<PointSpriteTexture *>	*m_pSpriteTextures;
+	PointSpriteVertex m_pVertices[MAX_POINTSPRITE_COUNT];
+	INT	m_iNumVertices;
 
 	ID3D11DeviceContext	*m_pDeviceContext;
 	ID3D11Device        *m_pDevice;
@@ -124,14 +131,6 @@ ID3D11PointSprite *ID3D11PointSprite::CreateInstance(){
 ID3D11PointSprite::~ID3D11PointSprite(){
 }
 
-//  テクスチャ管理用データ
-//  stl の展開を局所化するためローカルデータ構造としておく
-struct PointSpriteDataContext{
-	std::vector<PointSpriteTexture *>	pSpriteTextures;
-	PointSpriteVertex vertices[MAX_POINTSPRITE_COUNT];
-	INT	numVertices;
-};
-
 
 class D3D11PointSpriteShaderBuilder{
 public:
@@ -146,8 +145,10 @@ public:
 
 CD3D11PointSprite::CD3D11PointSprite(void)
 {
-	m_pDataContext = new PointSpriteDataContext;
-	m_pDataContext->numVertices = 0;
+	//m_pDataContext = new PointSpriteDataContext;
+	//m_pDataContext->numVertices = 0;
+	m_pSpriteTextures = NULL;
+	m_iNumVertices = 0;
 	m_pDeviceContext = NULL;
 	m_pDevice = NULL;
 
@@ -156,6 +157,8 @@ CD3D11PointSprite::CD3D11PointSprite(void)
 	m_pBlendStateAdd = NULL;
 	m_pVertexBuffer = NULL;
 	m_iActiveTextureNo = -1;
+
+	m_pSpriteTextures = new std::vector<PointSpriteTexture *>();
 
 	m_iShaderReferenceCount++;
 }
@@ -172,12 +175,12 @@ CD3D11PointSprite::~CD3D11PointSprite(void)
 	SAFE_RELEASE(m_pDeviceContext);
 
 	std::vector<PointSpriteTexture *>::iterator it;
-	it = m_pDataContext->pSpriteTextures.begin();
-	while(it != m_pDataContext->pSpriteTextures.end()){
+	it = m_pSpriteTextures->begin();
+	while(it != m_pSpriteTextures->end()){
 		SAFE_DELETE(*it);
 		++it;
 	}
-	SAFE_DELETE(m_pDataContext);
+	SAFE_DELETE(m_pSpriteTextures);
 }
 
 //
@@ -187,19 +190,19 @@ CD3D11PointSprite::~CD3D11PointSprite(void)
 //		pFilename : filename
 //
 void CD3D11PointSprite::SetTexture(INT no, TCHAR *pFilename){
-	int count = m_pDataContext->pSpriteTextures.size();
+	int count = m_pSpriteTextures->size();
 	int len;
 	PointSpriteTexture *pTextureNode;
 	if (no >= count){
 		int add = count - no + 1;
 		for ( int i = 0; i < add ; ++i){
-			m_pDataContext->pSpriteTextures.push_back(NULL);
+			m_pSpriteTextures->push_back(NULL);
 		}
 	}
-	pTextureNode = m_pDataContext->pSpriteTextures[no];
+	pTextureNode = (*m_pSpriteTextures)[no];
 	if (pTextureNode == NULL){
 		pTextureNode = new PointSpriteTexture;
-		m_pDataContext->pSpriteTextures[no] = pTextureNode;
+		(*m_pSpriteTextures)[no] = pTextureNode;
 	}else{
 		SAFE_DELETE_ARRAY(pTextureNode->pFilename);
 		SAFE_RELEASE(pTextureNode->pTexture);
@@ -213,29 +216,29 @@ void CD3D11PointSprite::SetTexture(INT no, TCHAR *pFilename){
 
 INT CD3D11PointSprite::GetNumTextures(){
 	INT num = 0;
-	if (m_pDataContext){
-		num = m_pDataContext->pSpriteTextures.size();
+	if (m_pSpriteTextures){
+		num = m_pSpriteTextures->size();
 	}
 	return num;
 }
 
 
 void CD3D11PointSprite::Render(ID3D11DeviceContext *pContext, DirectX::XMFLOAT3 *pposition, FLOAT psize, DirectX::XMFLOAT4 *pcolor, INT texNo){
-	if (m_pDataContext->numVertices >= MAX_POINTSPRITE_COUNT || m_iActiveTextureNo != texNo){
+	if (m_iNumVertices >= MAX_POINTSPRITE_COUNT || m_iActiveTextureNo != texNo){
 		Flush(pContext);
 	}
 	m_iActiveTextureNo = texNo;
-	PointSpriteVertex *pVertex = &m_pDataContext->vertices[m_pDataContext->numVertices];
+	PointSpriteVertex *pVertex = &m_pVertices[m_iNumVertices];
 	pVertex->color = *pcolor;
 	pVertex->psize = psize;
 	pVertex->position = *pposition;
-	++m_pDataContext->numVertices;
+	++m_iNumVertices;
 }
 
-//  描画バッファのフラッシュ
+//  flush the vertex buffer.
 void CD3D11PointSprite::Flush(ID3D11DeviceContext *pContext){
 
-	if (m_pDataContext->numVertices > 0){
+	if (m_iNumVertices > 0){
 		PointSpriteConstantBuffer cb;
 		cb.matWorld  = m_matWorld;
 		cb.matView  = m_matView;
@@ -249,8 +252,8 @@ void CD3D11PointSprite::Flush(ID3D11DeviceContext *pContext){
 		PointSpriteTexture		*pSpriteTexture = NULL;
 		ID3D11Texture2D			*pTexture = NULL;
 		ID3D11ShaderResourceView *pTextureShaderResourceView = NULL;
-		if (no >= 0 && no < (INT)m_pDataContext->pSpriteTextures.size()){
-			pSpriteTexture = m_pDataContext->pSpriteTextures[no];
+		if (no >= 0 && no < (INT)m_pSpriteTextures->size()){
+			pSpriteTexture = (*m_pSpriteTextures)[no];
 			if (pSpriteTexture != NULL){
 				pTexture = pSpriteTexture->pTexture;
 				pTextureShaderResourceView = pSpriteTexture->pTextureShaderResourceView;
@@ -266,21 +269,21 @@ void CD3D11PointSprite::Flush(ID3D11DeviceContext *pContext){
 				box.left = 0;
 				box.top = 0;
 				box.front = 0;
-				box.right = m_pDataContext->numVertices * sizeof(PointSpriteVertex);
+				box.right = m_iNumVertices * sizeof(PointSpriteVertex);
 				box.bottom = 1;
 				box.back = 1;
-				pContext->UpdateSubresource( m_pVertexBuffer, 0, &box, m_pDataContext->vertices, 0, 0 );
+				pContext->UpdateSubresource( m_pVertexBuffer, 0, &box, m_pVertices, 0, 0 );
 			}
 
-			// 入力アセンブラに頂点バッファを設定.
+			// install the vertex buffer to input assembler
 			UINT stride = sizeof( PointSpriteVertex );
 			UINT offset = 0;
 			pContext->IASetVertexBuffers( 0, 1, &m_pVertexBuffer, &stride, &offset );
 
-			// 入力アセンブラに入力レイアウトを設定.
+			// setup the input layout.
 			pContext->IASetInputLayout( m_pInputLayout );
 
-			// プリミティブの種類を設定.
+			// setup the primitive type
 			pContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_POINTLIST );
 
 			ID3D11ShaderResourceView* ppShaderResourceViews[] = { pTextureShaderResourceView, 0 };
@@ -288,29 +291,29 @@ void CD3D11PointSprite::Flush(ID3D11DeviceContext *pContext){
 			pContext->PSSetShaderResources(0, 1, ppShaderResourceViews);
 			pContext->PSSetSamplers( 0, 1, ppSamplerStates );
 
-			//　シェーダを設定して描画.
+			//　install the shaders
 			pContext->VSSetShader( m_pVertexShader, NULL, 0 );
 			pContext->GSSetShader( m_pGeometryShader, NULL, 0 );
 			if (pTextureShaderResourceView == NULL){
-				pContext->PSSetShader( m_pNoTexPixelShader,  NULL, 0 );	//  テクスチャ無し
+				pContext->PSSetShader( m_pNoTexPixelShader,  NULL, 0 );	//  without texture
 			}else{
-				pContext->PSSetShader( m_pPixelShader,  NULL, 0 );		//  テクスチャ有り
+				pContext->PSSetShader( m_pPixelShader,  NULL, 0 );		//  with texture
 			}
 
 			float blendFactor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 			pContext->OMSetBlendState( m_pBlendStateAdd, blendFactor, 0xffffffff );
 
-			pContext->Draw(m_pDataContext->numVertices,0);
+			pContext->Draw(m_iNumVertices,0);
 
 			ppSamplerStates[0] = NULL;
 			ppShaderResourceViews[0] = NULL;
 			pContext->PSSetSamplers( 0, 1, ppSamplerStates );
 			pContext->PSSetShaderResources(0, 1, ppShaderResourceViews);
 
-			//  ブレンドステートを元に戻す
+			//  recover the blend state.
 			pContext->OMSetBlendState( NULL, blendFactor, 0xffffffff );
 		}
-		m_pDataContext->numVertices = 0;
+		m_iNumVertices = 0;
 	}
 }
 
@@ -333,7 +336,7 @@ HRESULT CD3D11PointSprite::RestoreClassObjects(){
 	if (FAILED(hr))
 		goto EXIT;
 
-	// 入力レイアウトの定義.
+	// definition of the input layout.
 	D3D11_INPUT_ELEMENT_DESC layout[] = {
 	    {
 			"POSITION", 
@@ -350,7 +353,7 @@ HRESULT CD3D11PointSprite::RestoreClassObjects(){
 	};
 	UINT numElements = ARRAYSIZE( layout );
 
-	// 入力レイアウトを生成.
+	// create the input layout
 	hr = m_pDevice->CreateInputLayout( 
 	    layout,
 	    numElements,
@@ -363,25 +366,25 @@ HRESULT CD3D11PointSprite::RestoreClassObjects(){
 		return hr;
 	}
 
-	//  ジオメトリシェーダの生成
+	//  create the geometry shader
 	hr = m_pDevice->CreateGeometryShader(m_pGeometryShaderCode,m_dwGeometryShaderCodeSize,NULL,&m_pGeometryShader);
 	if (FAILED(hr))
 		goto EXIT;
 
 
-	//  ピクセルシェーダの生成
+	//  create the pixel shader
 	hr = m_pDevice->CreatePixelShader(m_pPixelShaderCode,m_dwPixelShaderCodeSize,NULL,&m_pPixelShader);
 	if (FAILED(hr))
 		goto EXIT;
 
-	//  ピクセルシェーダの生成
+	//  create the pixel shader without the texture.
 	hr = m_pDevice->CreatePixelShader(m_pNoTexPixelShaderCode,m_dwNoTexPixelShaderCodeSize,NULL,&m_pNoTexPixelShader);
 	if (FAILED(hr))
 		goto EXIT;
 
-	// 定数バッファの生成.
+	// create the constant buffer
 	{
-		// 定数バッファの設定.
+		// setup the constant buffer.
 		D3D11_BUFFER_DESC bd;
 		ZeroMemory( &bd, sizeof( D3D11_BUFFER_DESC ) );
 		bd.ByteWidth        = sizeof( PointSpriteConstantBuffer );
@@ -389,7 +392,7 @@ HRESULT CD3D11PointSprite::RestoreClassObjects(){
 		bd.BindFlags        = D3D11_BIND_CONSTANT_BUFFER;
 		bd.CPUAccessFlags   = 0;
 
-		// 定数バッファを生成.
+		// do create the constant buffer
 		hr = m_pDevice->CreateBuffer( &bd, NULL, &m_pConstantBuffer );
 		if ( FAILED( hr ) )
 		{
@@ -404,10 +407,10 @@ EXIT:
 HRESULT CD3D11PointSprite::RestoreInstanceObjects(){
 	HRESULT hr = S_OK;
 
-	if (m_pDataContext){
+	if (m_pSpriteTextures){
 		std::vector<PointSpriteTexture*>::iterator it;
-		it = m_pDataContext->pSpriteTextures.begin();
-		while (it != m_pDataContext->pSpriteTextures.end()){
+		it = m_pSpriteTextures->begin();
+		while (it != m_pSpriteTextures->end()){
 			if (*it != NULL){
 				ID3D11Texture2D		*pTexture = NULL;
 				ID3D11ShaderResourceView	*pTextureShaderResourceView = NULL;
@@ -415,7 +418,7 @@ HRESULT CD3D11PointSprite::RestoreInstanceObjects(){
 					(*it)->pFilename,   &pTexture,
 					&(*it)->dwSrcWidth, &(*it)->dwSrcHeight,FillMode::None
 				);
-				// シェーダリソースビューを生成.
+				// create the shader resource view of the texture.
 				if (SUCCEEDED(hr)){
 					D3D11_SHADER_RESOURCE_VIEW_DESC srvd;
 					D3D11_TEXTURE2D_DESC	texDesc;
@@ -440,42 +443,42 @@ HRESULT CD3D11PointSprite::RestoreInstanceObjects(){
 		}
 	}
 
-	//  テクスチャサンプラ―のセットアップ
+	//  setup the texture sampler
 	{
 		D3D11_SAMPLER_DESC samplerDesc;
-		samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;         // サンプリング時に使用するフィルタ。ここでは異方性フィルターを使用する。
-		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;     // 0 ～ 1 の範囲外にある u テクスチャー座標の描画方法
-		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;     // 0 ～ 1 の範囲外にある v テクスチャー座標
-		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;     // 0 ～ 1 の範囲外にある w テクスチャー座標
-		samplerDesc.MipLODBias = 0;                            // 計算されたミップマップ レベルからのバイアス
-		samplerDesc.MaxAnisotropy = 16;                        // サンプリングに異方性補間を使用している場合の限界値。有効な値は 1 ～ 16 。
-		samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;  // 比較オプション。
+		samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;         // select anisotropic filter to sample the pixel.
+		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;     // u operation about outside of the texture area.
+		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;     // v operation about outside of the texture area.
+		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;     // w operation about outside of the texture area.
+		samplerDesc.MipLODBias = 0;                            // bias from the calculated mipmap level.
+		samplerDesc.MaxAnisotropy = 16;                        // the max value of the anisotoropy.
+		samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;  // comparison option
 		memcpy((void*)&samplerDesc.BorderColor,(void*)&DirectX::XMFLOAT4(0,0,0,0),4*sizeof(FLOAT));
-		samplerDesc.MinLOD = 0;                                // アクセス可能なミップマップの下限値
-		samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;                // アクセス可能なミップマップの上限値
+		samplerDesc.MinLOD = 0;                                // lowest number of accessible mipmaps.
+		samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;                // highest number of accessible mipmaps.
 		// ID3D11Device::CreateSamplerState
 		hr = m_pDevice->CreateSamplerState( &samplerDesc, &m_pTextureSamplerState );
 		if( FAILED( hr ) )
 			return	hr;
 
 	}
-	// 頂点バッファの設定.
+	// setup the vertex buffer
 	{
-		// 頂点の定義.
+		// definition of the vertex buffer
   
 		D3D11_BUFFER_DESC bd;
 		ZeroMemory( &bd, sizeof( D3D11_BUFFER_DESC ) );
 		bd.Usage          = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth      = sizeof( this->m_pDataContext->vertices );
+		bd.ByteWidth      = sizeof( this->m_pVertices );
 		bd.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
 		bd.CPUAccessFlags = 0;
 
-		// サブリソースの設定.
+		// setup the sub resource
 		D3D11_SUBRESOURCE_DATA initData;
 		ZeroMemory( &initData, sizeof( D3D11_SUBRESOURCE_DATA ) );
-		initData.pSysMem = this->m_pDataContext->vertices;
+		initData.pSysMem = this->m_pVertices;
 
-		// 頂点バッファの生成.
+		// do create the vertex buffer..
 		hr = m_pDevice->CreateBuffer( &bd, &initData, &m_pVertexBuffer );
 		if ( FAILED( hr ) )
 		{
@@ -483,8 +486,8 @@ HRESULT CD3D11PointSprite::RestoreInstanceObjects(){
 		}
 	}
 	{
-		//  ブレンドステートの生成
-		//  半透明
+		//  setup the blend state
+		//  semi transparent
 		D3D11_BLEND_DESC BlendDesc;
 		ZeroMemory( &BlendDesc, sizeof( BlendDesc ) );
 		BlendDesc.AlphaToCoverageEnable = FALSE;
@@ -505,7 +508,7 @@ HRESULT CD3D11PointSprite::RestoreInstanceObjects(){
 		{
 			return	hr;
 		}
-		//  加算合成
+		//  overlapping
 		BlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 		BlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
 		for (int i = 1 ; i < 8 ; ++i){

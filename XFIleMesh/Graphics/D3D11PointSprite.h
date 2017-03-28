@@ -1,8 +1,12 @@
+//
+// @file D3D11PointSprite.h
+// @brief declaration of ID3D11PointSprite
+//
 #pragma once
 
 #include "DeviceDependentObject.h"
 
-//  Sprite インタフェース
+//  Inteface of Point Sprite
 class ID3D11PointSprite : public IDeviceDependentObject
 {
 public:

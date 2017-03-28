@@ -1,5 +1,5 @@
 //
-//	class CD3D11Sprite
+//	class CD3D11Font
 //	Desc: Ank Font on Direct3D11
 //		Debug purpose
 //

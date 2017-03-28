@@ -1,10 +1,10 @@
 //
-//	HighResTimer.cpp: CHighResTimer クラスのインプリメンテーション
+//	@file HighResTimer.cpp
+//  @brief Implementation of CHighResTimer.
 //
-//		64 ビットシステムカウンタを用いた高精度タイマーを
-//		提供する。
+//  @note High resolution timer with 64bit performance counter.
 //	
-//	詳細は、下記ＵＲＬを参照
+//	@Reference URL
 //	http://www5b.biglobe.ne.jp/~u-hei/d3d2d/HighResTimer.html
 //
 //
