@@ -1,6 +1,13 @@
+
 #ifndef	__TextureDB_h__
 #define	__TextureDB_h__
 
+//
+//  @class CTextureDB
+//  @desc:
+//    A class to manage textures to avoid reloading same bitmap
+//    which is used in different materials.
+//
 class	CTextureNode;
 class	CD3D11TextureDB{
 public:

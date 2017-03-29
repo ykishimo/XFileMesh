@@ -15,6 +15,12 @@ typedef struct	_node{
 	TCHAR	*pToken;
 }	TokenNode;
 
+//
+//	ctor
+//	@param pFilname : pointer to the pathname
+//         bRemoveTheDotDirectory : if true remove "." and ".;" from the result,
+//                               otherwise keep them.
+//
 CFilenameDecoder::CFilenameDecoder(TCHAR *pFilename, BOOL bRemoveTheDotDirectory)
 {
 	TokenNode dummy = {&dummy,&dummy,0,NULL};
@@ -44,7 +50,9 @@ CFilenameDecoder::CFilenameDecoder(TCHAR *pFilename, BOOL bRemoveTheDotDirectory
 	pRoot->prev = pRoot->next = pRoot;
 }
 
-	
+//
+//	destructor
+//
 CFilenameDecoder::~CFilenameDecoder(void)
 {
 	SAFE_DELETE(m_strPath);
@@ -89,8 +97,10 @@ INT		CFilenameDecoder::Decode(TCHAR *pFilename, VOID *pRootNode){
 	pRoot->len = numNodes;
 	return	numNodes;
 }
-
-//	assemble pathname string from linked list.
+//
+//  @method CreatePathString
+//	@brief  assembles pathname string from linked list.
+//
 void CFilenameDecoder::CreatePathString(VOID *pRootNode, INT numNodes){
 	TokenNode *pNode, *pRoot;
 	INT	sizString = 0;
@@ -118,7 +128,7 @@ void CFilenameDecoder::CreatePathString(VOID *pRootNode, INT numNodes){
 		p += pNode->len;
 	}
 
-	//	store the filename
+	//	store the body filename
 	pNode = pRoot->prev;
 	if (pNode != pRoot){
 		m_strFilename = new TCHAR[pNode->len + 1];
@@ -127,7 +137,8 @@ void CFilenameDecoder::CreatePathString(VOID *pRootNode, INT numNodes){
 }
 
 //
-//	remove "." and ".." without changing what it means.
+// @method InterpretTheDotDirectory
+// @brief removes "." and ".." without changing what they totally mean.
 //
 INT	CFilenameDecoder::InterpretTheDotDirectory(VOID *pRootNode,INT numNodes){
 	TokenNode *pNode, *pRoot, *pNext;
@@ -163,7 +174,14 @@ INT	CFilenameDecoder::InterpretTheDotDirectory(VOID *pRootNode,INT numNodes){
 }
 
 
-//	Get the pathname from this object
+//
+//  @method GetPath
+//	@brief Get the pathname from this object
+//  @param *length : (in/out)length of result buffer if pBuffer is not null
+//                  or the buffer length needed if pBuffer is null.
+//         *pBuffer : (in)pointer to the result buffer.
+//  @return : none
+//
 void CFilenameDecoder::GetPath(DWORD *length, TCHAR *pBuffer){
 	if (m_strPath == NULL){
 		*length = 0;
@@ -175,8 +193,14 @@ void CFilenameDecoder::GetPath(DWORD *length, TCHAR *pBuffer){
 		_tcscpy_s(pBuffer,*length,m_strPath);
 	}
 }
-
-//	Get the body filename from this object.
+//
+//  @method GetFilename
+//	@brief Get the body filename from this object.
+//  @param *length : (in/out)length of result buffer if pBuffer is not null
+//                  or the buffer length needed if pBuffer is null.
+//         *pBuffer : (in)pointer to the result buffer.
+//  @return : none
+//
 void CFilenameDecoder::GetFilename(DWORD *length, TCHAR *pBuffer){
 	if (m_strFilename == NULL){
 		*length = 0;
@@ -188,8 +212,14 @@ void CFilenameDecoder::GetFilename(DWORD *length, TCHAR *pBuffer){
 		_tcscpy_s(pBuffer,*length,m_strFilename);
 	}
 }
-
-//	Get full-path filename of what this object indicates.
+//
+//  @name GetFullname
+//  @brief:Get full-path filename of what this object indicates.
+//  @param *length : (in/out)length of result buffer if pBuffer is not null
+//                  or the buffer length needed if pBuffer is null.
+//         *pBuffer : (in)pointer to the result buffer.
+//  @return : none
+//
 void CFilenameDecoder::GetFullname(DWORD *length, TCHAR *pBuffer){
 	if (m_strFilename == NULL && m_strPath== NULL){
 		*length = 0;

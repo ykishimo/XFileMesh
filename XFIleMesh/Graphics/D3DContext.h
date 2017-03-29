@@ -41,7 +41,7 @@ HRESULT CreateD3DContext(ID3DContext **ppContext, HWND hWnd, BOOL bWindowed=true
 #define	SAFE_DELETE_ARRAY(o)	{  if (o){ delete [] (o);  o = NULL; }  }
 #define SAFE_RELEASE(o) if(o){  (o)->Release(); o = NULL; }
 
-
+//  remove // below to compile and save precompiled shaders.
 //#define COMPILE_AND_SAVE_SHADER
 
 #ifdef COMPILE_AND_SAVE_SHADER

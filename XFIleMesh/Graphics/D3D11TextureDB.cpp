@@ -1,3 +1,7 @@
+//
+//  @file:TextureDB.cpp
+//  @brief Implementation of CTextureDB
+//
 #include "stdafx.h"
 #include <D3D11.h>
 #include <tchar.h>
