@@ -250,7 +250,7 @@ CD3D11Sprite::~CD3D11Sprite(void)
 	SAFE_DELETE(m_pSpriteTextures);
 }
 
-//  全フィールドの初期化
+//  Initialize all fields
 void CD3D11Sprite::InitFields(){
 
 	//m_pDataContext = NULL;
@@ -281,7 +281,7 @@ HRESULT CD3D11Sprite::RestoreClassObjects(){
 	if (FAILED(hr))
 		goto EXIT;
 
-	// 入力レイアウトの定義.
+	// define the input layout
 	D3D11_INPUT_ELEMENT_DESC layout[] = {
 	    {
 			"POSITION", 
@@ -294,7 +294,7 @@ HRESULT CD3D11Sprite::RestoreClassObjects(){
 	};
 	UINT numElements = ARRAYSIZE( layout );
 
-	// 入力レイアウトを生成.
+	// generate the input layout
 	hr = m_pDevice->CreateInputLayout( 
 	    layout,
 	    numElements,
@@ -308,19 +308,18 @@ HRESULT CD3D11Sprite::RestoreClassObjects(){
 	}
 
 
-	//  ピクセルシェーダの生成
+	//  generate the pixel shader
 	hr = m_pDevice->CreatePixelShader(m_pPixelShaderCode,m_dwPixelShaderCodeSize,NULL,&m_pPixelShader);
 	if (FAILED(hr))
 		goto EXIT;
 
-	//  ピクセルシェーダの生成
+	//  generate secondary pixel shader
 	hr = m_pDevice->CreatePixelShader(m_pNoTexPixelShaderCode,m_dwNoTexPixelShaderCodeSize,NULL,&m_pNoTexPixelShader);
 	if (FAILED(hr))
 		goto EXIT;
 
-	// 定数バッファの生成.
+	// create the constant buffer
 	{
-		// 定数バッファの設定.
 		D3D11_BUFFER_DESC bd;
 		ZeroMemory( &bd, sizeof( D3D11_BUFFER_DESC ) );
 		bd.ByteWidth        = sizeof( SpriteConstantBuffer );
@@ -328,7 +327,6 @@ HRESULT CD3D11Sprite::RestoreClassObjects(){
 		bd.BindFlags        = D3D11_BIND_CONSTANT_BUFFER;
 		bd.CPUAccessFlags   = 0;
 
-		// 定数バッファを生成.
 		hr = m_pDevice->CreateBuffer( &bd, NULL, &m_pConstantBuffer );
 		if ( FAILED( hr ) )
 		{
@@ -365,7 +363,7 @@ HRESULT CD3D11Sprite::RestoreInstanceObjects(){
 					(*it)->pFilename,   &pTexture,
 					&(*it)->dwSrcWidth, &(*it)->dwSrcHeight,FillMode::None
 				);
-				// シェーダリソースビューを生成.
+				// create the shader resource view of the texture
 				if (SUCCEEDED(hr)){
 					D3D11_SHADER_RESOURCE_VIEW_DESC srvd;
 					D3D11_TEXTURE2D_DESC	texDesc;
@@ -390,28 +388,28 @@ HRESULT CD3D11Sprite::RestoreInstanceObjects(){
 		}
 	}
 
-	//  テクスチャサンプラ―のセットアップ
+	//  setup the texture sampler
 	{
 		D3D11_SAMPLER_DESC samplerDesc;
-		samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;         // サンプリング時に使用するフィルタ。ここでは異方性フィルターを使用する。
-		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;     // 0 ～ 1 の範囲外にある u テクスチャー座標の描画方法
-		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;     // 0 ～ 1 の範囲外にある v テクスチャー座標
-		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;     // 0 ～ 1 の範囲外にある w テクスチャー座標
-		samplerDesc.MipLODBias = 0;                            // 計算されたミップマップ レベルからのバイアス
-		samplerDesc.MaxAnisotropy = 16;                        // サンプリングに異方性補間を使用している場合の限界値。有効な値は 1 ～ 16 。
-		samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;  // 比較オプション。
+		samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;         // select the sampling filter (anisotropic filter is selected now)
+		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;     // how to handle the u coords outside 0 to 1
+		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;     // how to handle the v coords outside 0 to 1
+		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;     // how to handle the w coords outside 0 to 1
+		samplerDesc.MipLODBias = 0;                            // bias from the calculated mipmap level.
+		samplerDesc.MaxAnisotropy = 16;                        // valid value is from 1 to 16 。
+		samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;  // comparison function
 		memcpy((void*)&samplerDesc.BorderColor,(void*)&DirectX::XMFLOAT4(0,0,0,0),4*sizeof(FLOAT));
-		samplerDesc.MinLOD = 0;                                // アクセス可能なミップマップの下限値
-		samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;                // アクセス可能なミップマップの上限値
+		samplerDesc.MinLOD = 0;                                // min value of mipmaps
+		samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;                // max value of mipmaps
 		// ID3D11Device::CreateSamplerState
 		hr = m_pDevice->CreateSamplerState( &samplerDesc, &m_pTextureSamplerState );
 		if( FAILED( hr ) )
 			return	hr;
 
 	}
-	// 頂点バッファの設定.
+	// setup the vertex buffer
 	{
-		// 頂点の定義.
+		// define the vertices
 		SpriteVertex vertices[] = {
 			{  DirectX::XMFLOAT3( -0.5f,  0.5f, 0.0f ),  DirectX::XMFLOAT2(  0.0f,  0.0f ) },
 			{  DirectX::XMFLOAT3(  0.5f,  0.5f, 0.0f ),  DirectX::XMFLOAT2(  1.0f,  0.0f ) },
@@ -426,12 +424,12 @@ HRESULT CD3D11Sprite::RestoreInstanceObjects(){
 		bd.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
 		bd.CPUAccessFlags = 0;
 
-		// サブリソースの設定.
+		// create the subresource
 		D3D11_SUBRESOURCE_DATA initData;
 		ZeroMemory( &initData, sizeof( D3D11_SUBRESOURCE_DATA ) );
 		initData.pSysMem = vertices;
 
-		// 頂点バッファの生成.
+		// do create the vertex buffer
 		hr = m_pDevice->CreateBuffer( &bd, &initData, &m_pVertexBuffer );
 		if ( FAILED( hr ) )
 		{
@@ -439,7 +437,7 @@ HRESULT CD3D11Sprite::RestoreInstanceObjects(){
 		}
 	}
 	{
-		//  アルファ抜きブレンドステートの生成
+		//  create the blend state using alpha channels
 		D3D11_BLEND_DESC BlendDesc;
 		ZeroMemory( &BlendDesc, sizeof( BlendDesc ) );
 		BlendDesc.AlphaToCoverageEnable = FALSE;
@@ -461,7 +459,7 @@ HRESULT CD3D11Sprite::RestoreInstanceObjects(){
 			return	hr;
 		}
 	}
-	// 行列の設定.
+	// set up the matrix
 	{
 		//  non scaled ortho matrix (2D)
 		m_matProj = DirectX::XMMatrixIdentity();
@@ -681,7 +679,7 @@ void    CD3D11Sprite::Render(ID3D11DeviceContext *pContext, FLOAT x, FLOAT y, FL
 	ID3D11Texture2D			*pTexture = NULL;
 	ID3D11ShaderResourceView *pTextureShaderResourceView = NULL;
 
-	if (m_pSpriteTextures == NULL)
+	if (m_pSpriteTextures == NULL && no >= 0)
 		return;
 
 	if (no >= 0 && no < (INT)m_pSpriteTextures->size()){

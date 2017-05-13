@@ -31,6 +31,9 @@
     <Filter Include="Graphics\TextureLoaderAndUtilities">
       <UniqueIdentifier>{f3c780fd-62b5-4de8-af1b-0ab6b9bee918}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Graphics\Collider">
+      <UniqueIdentifier>{2a949d0f-db1e-4e8c-8509-4d7fecfd76f3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -120,6 +123,9 @@
     <ClInclude Include="Graphics\XFileParser.h">
       <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\MeshCollider.h">
+      <Filter>Graphics\Collider</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -196,6 +202,9 @@
     </ClCompile>
     <ClCompile Include="Graphics\XFileParser.cpp">
       <Filter>Graphics\StructuresOfMeshAndLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\MeshCollider.cpp">
+      <Filter>Graphics\Collider</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

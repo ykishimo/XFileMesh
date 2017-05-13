@@ -4,7 +4,7 @@ struct MeshFrame;
 struct MeshContainer;
 struct FrameRendererData;
 
-class CSimpleMeshRenderer : virtual public ISimpleMesh
+__declspec(align(16)) class CSimpleMeshRenderer : virtual public ISimpleMesh
 {
 public:
 	CSimpleMeshRenderer();
@@ -77,7 +77,8 @@ protected:
 
 	BOOL				m_bPrepared;
 };
-class CSimpleMesh : public virtual CSimpleMeshRenderer
+
+__declspec(align(16)) class CSimpleMesh : public virtual CSimpleMeshRenderer
 {
 public:
 	CSimpleMesh(TCHAR *pFilename);

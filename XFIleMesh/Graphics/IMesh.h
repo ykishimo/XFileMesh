@@ -32,6 +32,7 @@ public:
 
 	virtual IAnimator *GetAnimator() = 0;
 };
+
 //  Animated mesh
 class IAnimatedMesh : public virtual ISimpleMesh, public virtual IAnimated
 {
@@ -54,6 +55,22 @@ public:
 
 	virtual IAnimator *GetAnimator() = 0;
 #endif
+};
+
+//  Mesh collider (wall)
+//
+class IMeshCollider{
+public:
+	virtual ~IMeshCollider() = 0;
+	static IMeshCollider *CreateInstance(TCHAR *pFilename);
+	virtual BOOL	ProbeTheWallSinkDepth(DirectX::XMFLOAT3 *pVec, FLOAT fRadius, DirectX::XMFLOAT3 *pVecNormal, FLOAT *pDepth) = 0;
+	virtual BOOL	ProbeTheWallSinkDepthWithMotion(DirectX::XMFLOAT3 *pVec, FLOAT fRadius, DirectX::XMFLOAT3 *pVecNormal, FLOAT *pDepth) = 0;
+	virtual BOOL	CheckCollisionWithSegment(DirectX::XMFLOAT3 *pVec1, DirectX::XMFLOAT3 *pVec2, FLOAT fRadius) = 0;
+	virtual BOOL	CheckCollisionWithSegment(DirectX::XMFLOAT3 *pVec1, DirectX::XMFLOAT3 *pVec2, FLOAT fErrorCapacity, DirectX::XMFLOAT3 *pVecOut) = 0;
+
+	virtual BOOL	ProbeTheGroundAltitude(DirectX::XMFLOAT3 *pVec, DirectX::XMFLOAT3 *pBoxMin, DirectX::XMFLOAT3 *pBoxMax, DirectX::XMFLOAT3 *pVecNormal, FLOAT *pAlt, FLOAT *pDist) = 0;
+	virtual BOOL	ProbeTheGroundAltitudeOneSide(DirectX::XMFLOAT3 *pVec, DirectX::XMFLOAT3 *pBoxMin, DirectX::XMFLOAT3 *pBoxMax, DirectX::XMFLOAT3 *pVecNormal, FLOAT *pAlt, FLOAT *pDist) = 0;
+	virtual BOOL	ProbeTheGroundAltitudeVerticallyNearest(DirectX::XMFLOAT3 *pVec, DirectX::XMFLOAT3 *pBoxMin, DirectX::XMFLOAT3 *pBoxMax, DirectX::XMFLOAT3 *pVecNormal, FLOAT *pAlt, FLOAT *pDist) = 0;
 };
 
 //  Skinned mesh

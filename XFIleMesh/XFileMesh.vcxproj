@@ -69,7 +69,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>Graphics</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Graphics;$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -99,6 +99,7 @@
     <ClInclude Include="Graphics\HighResTimer.h" />
     <ClInclude Include="Graphics\IMesh.h" />
     <ClInclude Include="Graphics\Mesh.h" />
+    <ClInclude Include="Graphics\MeshCollider.h" />
     <ClInclude Include="Graphics\MeshFrameTracker.h" />
     <ClInclude Include="Graphics\MTAnimator.h" />
     <ClInclude Include="Graphics\rfc1951.h" />
@@ -113,6 +114,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BurnUp.cpp" />
+    <ClCompile Include="Graphics\MeshCollider.cpp" />
     <ClCompile Include="XFileMesh.cpp" />
     <ClCompile Include="Graphics\AnimatedMesh.cpp" />
     <ClCompile Include="Graphics\Animation.cpp" />
