@@ -29,7 +29,11 @@ IMeshCollider::~IMeshCollider(){
 
 //  Factory
 IMeshCollider * IMeshCollider::CreateInstance(TCHAR *pFilename){
-	IMeshCollider *pCollider = new CMeshCollider(pFilename);
+	CMeshCollider *pCollider = new CMeshCollider(pFilename);
+	if (pCollider && pCollider->GetRootFrame() == NULL){
+		delete pCollider;
+		pCollider = NULL;
+	}
 	return pCollider;
 }
 
@@ -198,11 +202,13 @@ void CMeshCollider::EnflatFrames(MeshFrame *pFrame, frameiterator *pFrames){
 }
 CMeshCollider::~CMeshCollider(void)
 {
-	SAFE_DELETE(m_ppMeshFrames);
 	DeleteObjects();
+	SAFE_DELETE(m_ppMeshFrames);
 }
 void CMeshCollider::DeleteObjects(){
+
 }
+
 void CMeshCollider::GetBoundingAABB( XMVECTOR *pMin, XMVECTOR *pMax){
 	*pMin = XMLoadFloat3(&m_vecMin);
 	*pMax = XMLoadFloat3(&m_vecMax);
@@ -267,6 +273,7 @@ BOOL CMeshCollider::ProbeTheGroundAltitude(XMFLOAT3 *pPosition, XMFLOAT3 *pBoxMi
 	}
 
 	fMinDist = FLT_MAX;
+	int num;
 	//	メッシュから個別にポリゴンを抽出する。
 	for (int i = 0; i < (int)m_dwNumFrames ; ++i){
 		int index = 0, k;
@@ -289,7 +296,8 @@ BOOL CMeshCollider::ProbeTheGroundAltitude(XMFLOAT3 *pPosition, XMFLOAT3 *pBoxMi
 
 		index = 0;
 		pVertices = (COLLISIONVERTEX*)pMesh->pVertices;
-		while(index < pMesh->numIndices){
+		int iNumIndices = pMesh->numIndices * 3;
+		while(index < iNumIndices){
 			k = pMesh->pIndices[index++];
 			positions[0] = XMLoadFloat3(&pVertices[k].position);
 			normals[0]   = XMLoadFloat3(&pVertices[k].normal);
@@ -305,7 +313,20 @@ BOOL CMeshCollider::ProbeTheGroundAltitude(XMFLOAT3 *pPosition, XMFLOAT3 *pBoxMi
 				positions[i] = XMVector3TransformCoord(positions[i],matWorld);
 				normals[i]   = XMVector3TransformNormal(normals[i], matWorld);
 			}
-
+			{
+				float minx = FLT_MAX;
+				float maxx = FLT_MIN;
+				float minz = FLT_MAX;
+				float maxz = FLT_MIN;
+				for (int i = 0; i < 3 ; ++i){
+					positions[i] = XMVector3TransformCoord(positions[i],matWorld);
+					normals[i]   = XMVector3TransformNormal(normals[i], matWorld);
+					minx = min(minx,XMVectorGetX(positions[i]));
+					minz = min(minx,XMVectorGetZ(positions[i]));
+					maxx = max(maxx,XMVectorGetX(positions[i]));
+					maxz = max(maxx,XMVectorGetZ(positions[i]));
+				}
+			}
 			if (ProbeTheTriangleHeight(positions,normals,&fDist,&fAltTmp,pBoxMin,pBoxMax,pPosition,&vecNormalTmp)){
 				if (fDist == 0){
 					bRet = true;
@@ -322,6 +343,7 @@ BOOL CMeshCollider::ProbeTheGroundAltitude(XMFLOAT3 *pPosition, XMFLOAT3 *pBoxMi
 				}
 			}
 		}
+		num = index;
 	}
 	if (bRet){
 		*pAlt = fAlt;
@@ -361,8 +383,10 @@ static BOOL	ProbeTheTriangleHeight(
 		return false;
 
 	FLOAT		len1, len2, len3, dx, dz;
-	//	ポリゴンを、真上から、XZ 平面に投影した時の
-	//	各辺の長さを算出。
+
+	//  first press the triangle on the x-z plane
+	//  ( make y zero )
+	//  then measure the lenths of all edges.
 	dx = XMVectorGetX(pVertices[1]) - XMVectorGetX(pVertices[0]);
 	dz = XMVectorGetZ(pVertices[1]) - XMVectorGetZ(pVertices[0]);
 	len1 = dx * dx + dz * dz;
@@ -470,6 +494,39 @@ static BOOL	ProbeTheTriangleHeight(
 				fAlt = fTmp;
 				*pVecNormal = vecNormal;
 			}
+		}
+		//  line 1 to 2
+		pos1 = pVertices[2];
+		pos2 = pVertices[1];
+		normal1 = pNormals[2];
+		normal2 = pNormals[1];
+		if (FitLineToBox(&pos1, &pos2, &normal1, &normal2, &vecMin, &vecMax)){
+			CalcShortestDistanceAndAltitude(pPosition,&pos1, &pos2,&normal1,&normal2, &fTmp, &fDist,&vecNormal);
+			if (fDist < fDistMin){
+				fDistMin = fDist;
+				fAlt = fTmp;
+				*pVecNormal = vecNormal;
+			}
+		}
+		//  line 2 to 0
+		pos1 = pVertices[0];
+		pos2 = pVertices[2];
+		normal1 = pNormals[0];
+		normal2 = pNormals[2];
+		if (FitLineToBox(&pos1, &pos2, &normal1, &normal2, &vecMin, &vecMax)){
+			CalcShortestDistanceAndAltitude(pPosition,&pos1, &pos2,&normal1,&normal2, &fTmp, &fDist,&vecNormal);
+			if (fDist < fDistMin){
+				fDistMin = fDist;
+				fAlt = fTmp;
+				*pVecNormal = vecNormal;
+			}
+		}
+		if (fDistMin < FLT_MAX){
+
+			fDist = (FLOAT)sqrt(fDistMin);
+			*pDist = fDist;
+			*pAlt = fAlt;
+			return	TRUE;
 		}
 	}
 	return false;
@@ -624,6 +681,38 @@ static BOOL	ProbeTheTriangleHeightOneSide(
 				fAlt = fTmp;
 				*pVecNormal = vecNormal;
 			}
+		}
+		//  line 1 to 2
+		pos1 = pVertices[2];
+		pos2 = pVertices[1];
+		normal1 = pNormals[2];
+		normal2 = pNormals[1];
+		if (FitLineToBox(&pos1, &pos2, &normal1, &normal2, &vecMin, &vecMax)){
+			CalcShortestDistanceAndAltitude(pPosition,&pos1, &pos2,&normal1,&normal2, &fTmp, &fDist,&vecNormal);
+			if (fDist < fDistMin){
+				fDistMin = fDist;
+				fAlt = fTmp;
+				*pVecNormal = vecNormal;
+			}
+		}
+		//  line 2 to 0
+		pos1 = pVertices[0];
+		pos2 = pVertices[2];
+		normal1 = pNormals[0];
+		normal2 = pNormals[2];
+		if (FitLineToBox(&pos1, &pos2, &normal1, &normal2, &vecMin, &vecMax)){
+			CalcShortestDistanceAndAltitude(pPosition,&pos1, &pos2,&normal1,&normal2, &fTmp, &fDist,&vecNormal);
+			if (fDist < fDistMin){
+				fDistMin = fDist;
+				fAlt = fTmp;
+				*pVecNormal = vecNormal;
+			}
+		}
+		if (fDistMin < FLT_MAX){
+			fDist = (FLOAT)sqrt(fDistMin);
+			*pDist = fDist;
+			*pAlt = fAlt;
+			return	TRUE;
 		}
 	}
 	return false;
@@ -797,8 +886,8 @@ static void CalcShortestDistanceAndAltitude(DirectX::XMFLOAT3 *vecPos,
 	dz1 = XMVectorGetZ(vecTmp);
 
 	dx2 = XMVectorGetX(*pPos1) - vecPos->x;
-//	dy2 = XMVectorGetY(*pPos1) - vecPos->z;
-	dz2 = XMVectorGetZ(*pPos1) - vecPos->y;
+//	dy2 = XMVectorGetY(*pPos1) - vecPos->y;
+	dz2 = XMVectorGetZ(*pPos1) - vecPos->z;
 
 	len = dx1*dx1 + dz1*dz1;
 	if (len < FLT_MIN){
@@ -893,7 +982,8 @@ BOOL	CMeshCollider::ProbeTheGroundAltitudeOneSide(XMFLOAT3 *pPosition, XMFLOAT3 
 
 		index = 0;
 		pVertices = (COLLISIONVERTEX*)pMesh->pVertices;
-		while(index < pMesh->numIndices){
+		int iNumIndices = pMesh->numIndices * 3;
+		while(index < iNumIndices){
 			k = pMesh->pIndices[index++];
 			positions[0] = XMLoadFloat3(&pVertices[k].position);
 			normals[0]   = XMLoadFloat3(&pVertices[k].normal);
@@ -984,7 +1074,8 @@ BOOL	CMeshCollider::ProbeTheGroundAltitudeVerticallyNearest(XMFLOAT3 *pPosition,
 
 		index = 0;
 		pVertices = (COLLISIONVERTEX*)pMesh->pVertices;
-		while(index < pMesh->numIndices){
+		int iNumIndices = pMesh->numIndices * 3;
+		while(index < iNumIndices){
 			k = pMesh->pIndices[index++];
 			positions[0] = XMLoadFloat3(&pVertices[k].position);
 			normals[0]   = XMLoadFloat3(&pVertices[k].normal);
@@ -1567,7 +1658,8 @@ BOOL	CMeshCollider::CheckCollisionWithSegment(XMFLOAT3 *pVec1, XMFLOAT3 *pVec2, 
 
 		index = 0;
 		pVertices = (COLLISIONVERTEX*)pMesh->pVertices;
-		while(index < pMesh->numIndices){
+		int iNumIndices = pMesh->numIndices * 3;
+		while(index < iNumIndices){
 			k = pMesh->pIndices[index++];
 			positions[0] = XMLoadFloat3(&pVertices[k].position);
 			normals[0]   = XMLoadFloat3(&pVertices[k].normal);
@@ -1643,7 +1735,8 @@ BOOL	CMeshCollider::CheckCollisionWithSegment(XMFLOAT3 *pVec1, XMFLOAT3 *pVec2, 
 
 		index = 0;
 		pVertices = (COLLISIONVERTEX*)pMesh->pVertices;
-		while(index < pMesh->numIndices){
+		int iNumIndices = pMesh->numIndices * 3;
+		while(index < iNumIndices){
 			k = pMesh->pIndices[index++];
 			positions[0] = XMLoadFloat3(&pVertices[k].position);
 			normals[0]   = XMLoadFloat3(&pVertices[k].normal);
@@ -1743,7 +1836,8 @@ BOOL CMeshCollider::ProbeTheWallSinkDepthBase(
 
 		index = 0;
 		pVertices = (COLLISIONVERTEX*)pMesh->pVertices;
-		while(index < pMesh->numIndices){
+		int iNumIndices = pMesh->numIndices * 3;
+		while(index < iNumIndices){
 			k = pMesh->pIndices[index++];
 			positions[0] = XMLoadFloat3(&pVertices[k].position);
 			normals[0]   = XMLoadFloat3(&pVertices[k].normal);

@@ -156,6 +156,7 @@ HRESULT CSimpleMeshRenderer::AdjustVertexFormat(){
 		if (FAILED(hr)){
 			SAFE_DELETE(m_pFrameRoot);
 		}
+		DeleteFrameRendererDatas();
 		CreateFrameRendererDatas();		
 	}
 	return hr;

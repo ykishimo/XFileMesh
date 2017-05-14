@@ -24,7 +24,6 @@ public:
 
 	virtual HRESULT RestoreDeviceObjects(ID3D11DeviceContext *pContext) override;
 	virtual HRESULT ReleaseDeviceObjects() override;
-
 	virtual BOOL	IsPrepared();
 	virtual void	Render(ID3D11DeviceContext *pContext);
 	virtual void	SetWorldMatrix(DirectX::XMMATRIX *pMatWorld);

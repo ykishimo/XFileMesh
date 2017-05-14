@@ -46,7 +46,6 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 
 	//  メモリチェック
 	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
-
     //  変数宣言
     WNDCLASSEX wcex;  //  ウィンドウクラス構造体
     HWND hWnd;        //  ウィンドウハンドル
@@ -102,7 +101,8 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	IBoneRenderer *pBoneRenderer = NULL;
 	ISimpleMesh *pSimpleMesh = NULL;
 	CMTAnimator *ppMTAnimator[2] = {NULL,NULL};
-	
+	IMeshCollider *pFloor = NULL;
+
 	//  背景関連
 	ISimpleMesh *pBGMesh = NULL;
 	IAnimatedMesh *pAnimatedMesh = NULL;
@@ -181,6 +181,10 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 					SAFE_DELETE(pSimpleMesh);
 				}
 			}
+			pFloor = IMeshCollider::CreateInstance(_T("res\\land.x"));
+			if (pFloor != NULL){
+				pFloor->RestoreDeviceObjects(pContext);
+			}
 			{
 				DirectX::XMVECTOR camPos    = DirectX::XMVectorSet( 0.0f, 2.0f, -9.00f, 0.0f );
 				DirectX::XMVECTOR camTarget = DirectX::XMVectorSet( 0.0f, 0.0f,  0.0f, 0.0f );
@@ -221,6 +225,11 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	// メイン メッセージ ループ:
     //  (2)メッセージループ
     FLOAT	fAngle = 0;
+	FLOAT	fRadius = 0.0f;
+	FLOAT	fX, fY, fZ;
+	FLOAT	fSign = 1.0f;
+	INT		iPhase = 0;
+	fY = 0.f;
 	while(true){
         if(PeekMessage(&msg, 0, 0, 0, PM_REMOVE)){
             if(msg.message == WM_QUIT)
@@ -256,9 +265,64 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 				pAnimatedMesh->Update((FLOAT)elapsed*0.1f);
 			}
 
-			fAngle += (FLOAT)(0.0125f * elapsed);
+			fAngle += (FLOAT)(0.0675f * elapsed);
 			if (fAngle > XM_PI*2.0f){
 				fAngle -= XM_PI*2.0f;
+			}
+
+			fRadius += fSign * (FLOAT)(0.0675f/16.f)*elapsed;
+			if (fRadius > 1.0f && fSign > 0){
+				fSign = -1.0f;
+			}else if (fRadius < 0.0f && fSign < 0){
+				fSign = 1.0f;
+				iPhase = (iPhase + 1) % 8;
+			}
+			switch(iPhase){
+			case	0:
+				fX = 0.0f;
+				fZ = -fRadius*4.f;
+				break;
+			case	1:
+				fX = -fRadius*4.f;
+				fZ = -fRadius*4.f;
+				break;
+			case	2:
+				fX = -fRadius*4.f;
+				fZ = 0.0;
+				break;
+			case	3:
+				fX = -fRadius*4.f;
+				fZ =  fRadius*4.f;
+				break;
+			case	4:
+				fX = 0.0f;
+				fZ = fRadius*4.f;
+				break;
+			case	5:
+				fX =  fRadius*4.f;
+				fZ =  fRadius*4.f;
+				break;
+			case	6:
+				fX = fRadius*4.f;
+				fZ = 0.0f;
+				break;
+			case	7:
+				fX =  fRadius*4.f;
+				fZ = -fRadius*4.f;
+				break;
+			}
+			fX += 0.25f * cosf(fAngle);
+			fZ += 0.25f * sinf(fAngle);
+			if (pFloor){
+				FLOAT	fAlt,fDist;
+				XMFLOAT3 vecMin, vecMax;
+				XMFLOAT3 vecNormal;
+				vecMin = XMFLOAT3(fX-2.f,-5.f,fZ-2.f);
+				vecMax = XMFLOAT3(fX+2.f,+5.f,fZ+2.f);
+				
+				if (pFloor->ProbeTheGroundAltitude(&XMFLOAT3(fX,0,fZ),&vecMin,&vecMax,&vecNormal,&fAlt,&fDist)){
+					fY = fAlt;
+				}
 			}
 
 			ID3D11DeviceContext *pContext = g_pD3DContext->GetDeviceContext();
@@ -288,7 +352,16 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 					pBGMesh->Render(pContext);
 				}
 			}
+
 			g_pD3DContext->ClearDepthStencilView(D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
+			if (pFloor){
+				XMMATRIX matWorld = XMMatrixIdentity();
+				pFloor->SetProjectionMatrix(&matProj);
+				pFloor->SetViewMatrix(&matView);
+				pFloor->SetWorldMatrix(&matWorld);
+				pFloor->Render(pContext);
+			}
+			//g_pD3DContext->ClearDepthStencilView(D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
 
 			if (pContext){
 				if (ppMTAnimator[0] != NULL){
@@ -338,7 +411,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 				if (pSimpleMesh != NULL){
 					//static XMMATRIX matWorld = XMMatrixRotationY(XM_PIDIV2);
 					DirectX::XMMATRIX matWorld = DirectX::XMMatrixRotationY(fAngle);
-					XMMATRIX matTranslation = XMMatrixTranslation(0.0f,0.0f,0.0f);
+					XMMATRIX matTranslation = XMMatrixTranslation(fX,fY+1.0f,fZ);
 					XMMATRIX matScaling = XMMatrixScaling(1.0f,1.0f,1.0f);
 					matWorld = matScaling * matWorld * matTranslation;
 					pSimpleMesh->SetProjectionMatrix(&matProj);
@@ -410,6 +483,7 @@ ERROR_EXIT:
 		}
 		pContext->Release();
 	}
+	SAFE_DELETE(pFloor);		//  Destroy MeshCollider
 	SAFE_DELETE(pSimpleMesh);   //  Destroy SimpleMesh
 	SAFE_DELETE(pBoneRenderer); //  Destroy BoneRenderer
 	SAFE_DELETE(pSkinnedMesh);  //  Destroy Skin Mesh

@@ -59,7 +59,7 @@ public:
 
 //  Mesh collider (wall)
 //
-class IMeshCollider{
+class IMeshCollider : public virtual ISimpleMesh{
 public:
 	virtual ~IMeshCollider() = 0;
 	static IMeshCollider *CreateInstance(TCHAR *pFilename);
