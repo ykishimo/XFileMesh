@@ -270,7 +270,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 				fAngle -= XM_PI*2.0f;
 			}
 
-			fRadius += fSign * (FLOAT)(0.0675f/16.f)*elapsed;
+			fRadius += fSign * (FLOAT)(0.0675f/16.f)*(float)elapsed;
 			if (fRadius > 1.0f && fSign > 0){
 				fSign = -1.0f;
 			}else if (fRadius < 0.0f && fSign < 0){
