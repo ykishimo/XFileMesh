@@ -1166,7 +1166,8 @@ static BOOL CalcGoBackDir(std::vector<COLLISIONINFO*>*pCollisionInfos, XMVECTOR 
 	y = (vecDirMin.y+vecDirMax.y)*0.5f;	
 	z = (vecDirMin.z+vecDirMax.z)*0.5f;	
 	if ((x*x+y*y+z*z) > FLT_MIN){
-		vecNormal = XMVector3Normalize(XMLoadFloat3(&XMFLOAT3(x,y,z)));
+		//vecNormal = XMVector3Normalize(XMLoadFloat3(&XMFLOAT3(x,y,z)));
+		vecNormal = XMVector3Normalize(XMVectorSet(x,y,z,0));
 		//	Check the reliability
 		//	if the probe stacks in polygons.
 		FLOAT l = XMVectorGetX(XMVector3Length(*pVecMotion));
@@ -1407,7 +1408,7 @@ BOOL	ProbeTheTriangleDistanceWithSegment(XMVECTOR *pPositions, FLOAT *pDist, XMV
 			XMVECTOR vecTmp = positions[i] - vecOrd;
 			positions[i] = XMVector3TransformCoord(positions[i],matRotation);
 		}
-		positions[0] = XMLoadFloat3(&XMFLOAT3(0,0,0));
+		positions[0] = XMVectorSet(0,0,0,0);	//XMLoadFloat3(&XMFLOAT3(0,0,0));
 		FLOAT x, y, z;
 		BOOL bF0=false, bF1 = false, bF2 = false;
 		x = XMVectorGetX(vecPos);
@@ -1559,7 +1560,7 @@ BOOL	ProbeTheTriangleDistanceWithSegment2(XMVECTOR *positions, XMVECTOR *pvec1, 
     v = (FLOAT)(D2 * D);
 	t = (FLOAT)(D3 * D);
 
-	XMVECTOR	vecOut= XMLoadFloat3(&XMFLOAT3(a*u+b*v,e*u+f*v,i*u+j*v));
+	XMVECTOR	vecOut= XMVectorSet(a*u+b*v,e*u+f*v,i*u+j*v,0);	//XMLoadFloat3(&XMFLOAT3(a*u+b*v,e*u+f*v,i*u+j*v));
 	vecOut += positions[0];//pTri[0].p;
 
 	*pT = t;
@@ -1605,6 +1606,9 @@ BOOL	ProbeTheTriangleDistanceWithSegment2(XMVECTOR *positions, XMVECTOR *pvec1, 
 
 		XMVECTOR	vecTmp = positions[2] - positions[1];//pTri[2].p - pTri[1].p;
 		vecOut -= positions[1];//pTri[1].p;
+
+		//  Get the nearest position with differential equation.
+		//  not from the geometric function.
 		//	Šô‰½“I‚ÉŒ©‚¦‚ÄAŽÀ‚Í”÷•ªŽ®‚Å“š‚¦‚ðo‚µ‚Ä‚¢‚é
 		FLOAT	n = XMVectorGetX(XMVector3Dot(vecTmp, vecOut));
 		n /= XMVectorGetX(XMVector3LengthSq(vecTmp));
@@ -1897,6 +1901,9 @@ BOOL CMeshCollider::ProbeTheWallSinkDepthBase(
 		XMVECTOR vecPosition = XMLoadFloat3(pPosition);
 		FLOAT l = XMVectorGetX(XMVector3Length(vecMotion));
 		if (!CalcGoBackDir(&collisioninfos,&vecPosition,&vecMotion,&vecNormal,fRadius)){
+
+			//  if it is impossible to calculate 
+			//  just go back to the ordinal position.
 			vecNormal = (-vecMotion) * (1.0f/l);
 			pVecNormal->x = XMVectorGetX(vecNormal);;
 			pVecNormal->y = XMVectorGetY(vecNormal);;

@@ -5,7 +5,7 @@
 //  @note High resolution timer with 64bit performance counter.
 //	
 //	@Reference URL
-//	http://www5b.biglobe.ne.jp/~u-hei/d3d2d/HighResTimer.html
+//	http://mrkk.ciao.jp/d3d2d/HighResTimer.html
 //
 //
 #include "stdafx.h"

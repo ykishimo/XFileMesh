@@ -320,7 +320,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 				vecMin = XMFLOAT3(fX-2.f,-5.f,fZ-2.f);
 				vecMax = XMFLOAT3(fX+2.f,+5.f,fZ+2.f);
 				
-				if (pFloor->ProbeTheGroundAltitude(&XMFLOAT3(fX,0,fZ),&vecMin,&vecMax,&vecNormal,&fAlt,&fDist)){
+				if (pFloor->ProbeTheGroundAltitudeOneSide(&XMFLOAT3(fX,fY,fZ),&vecMin,&vecMax,&vecNormal,&fAlt,&fDist)){
 					fY = fAlt;
 				}
 			}
