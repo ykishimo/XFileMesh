@@ -823,8 +823,8 @@ void CD3D11Font::DrawChar(ID3D11DeviceContext *pContext,  char ankCode, DirectX:
 		return;
 
 	//  transform 2D -> clipping space
-	FLOAT l = *px;
-	FLOAT t = *py;
+	FLOAT l = *px + vp.TopLeftX;
+	FLOAT t = *py + vp.TopLeftY;
 	FLOAT r = l + w;
 	FLOAT b = t + h;
 	FLOAT z = 1.0f;
@@ -839,21 +839,20 @@ void CD3D11Font::DrawChar(ID3D11DeviceContext *pContext,  char ankCode, DirectX:
 	
 	*px += w;
 
-	// 頂点バッファの設定.
+	//  Setup the vertex buffer
 	{
-		// 頂点の定義.
+		//  Definition of the vertices
 		AnkFontVertex vertices[] = {
 			{  DirectX::XMFLOAT3( l, t, z ),  DirectX::XMFLOAT2(  tx1,  ty1 ) },
 			{  DirectX::XMFLOAT3( r, t, z ),  DirectX::XMFLOAT2(  tx2,  ty1 ) },
 			{  DirectX::XMFLOAT3( l, b, z ),  DirectX::XMFLOAT2(  tx1,  ty2 ) },
 			{  DirectX::XMFLOAT3( r, b, z ),  DirectX::XMFLOAT2(  tx2,  ty2 ) },
 		};
-  
 		pContext->UpdateSubresource( m_pVertexBuffer, 0, NULL, vertices, 0, 0 );
 		
 	}
 
-	//　シェーダを設定
+	//　install the shaders
 	pContext->VSSetShader( m_pVertexShader,   NULL, 0 );
 	pContext->GSSetShader( NULL, NULL, 0 );
 	pContext->PSSetShader( m_pPixelShader,    NULL, 0 );

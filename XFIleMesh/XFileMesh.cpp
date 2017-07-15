@@ -369,7 +369,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 					XMMATRIX matWorld;
 					XMMATRIX matRotation = DirectX::XMMatrixRotationY(fAngle);
 					XMMATRIX matScaling = XMMatrixScaling(3.0f,3.0f,3.0f);
-					XMMATRIX matTranslation = XMMatrixTranslation(3.0f,-2.0f,0.0f);
+					XMMATRIX matTranslation = XMMatrixTranslation(3.0f,0.0f,0.0f);
 					matWorld = matScaling * matRotation * matTranslation;
 					pSkinnedMesh->SetProjectionMatrix(&matProj);
 					pSkinnedMesh->SetViewMatrix(&matView);
@@ -383,7 +383,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 						pBoneRenderer->SetViewMatrix(&matView);
 						pBoneRenderer->Render(pContext);
 					}
-					matTranslation = XMMatrixTranslation(-3.0f,-2.0f,0.0f);
+					matTranslation = XMMatrixTranslation(-3.0f,0.0f,0.0f);
 					matWorld = matScaling * matTranslation;
 					ppMTAnimator[1]->Update((FLOAT)elapsed,&matWorld);
 					ppMTAnimator[1]->Render(pContext);
@@ -391,7 +391,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 				}else if (pSkinnedMesh != NULL){
 					DirectX::XMMATRIX matWorld = DirectX::XMMatrixRotationY(fAngle);
 					XMMATRIX matScaling = XMMatrixScaling(3.0f,3.0f,3.0f);
-					XMMATRIX matTranslation = XMMatrixTranslation(1.5f,-1.5f,0.0f);
+					XMMATRIX matTranslation = XMMatrixTranslation(1.5f,1.5f,0.0f);
 					matWorld = matScaling * matWorld * matTranslation;
 					pSkinnedMesh->SetProjectionMatrix(&matProj);
 					pSkinnedMesh->SetViewMatrix(&matView);

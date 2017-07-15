@@ -7,81 +7,6 @@
 #include "D3DContext.h"
 //  
 
-#ifdef COMPILE_AND_SAVE_SHADER
-
-static char shadercode[]="\
-//-----------------------------------------------------------------------------------\n\
-//  texture sampler\n\
-//-----------------------------------------------------------------------------------\n\
-SamplerState textureSampler : register(s0);\n\
-Texture2D	diffuseTexture : register(t0);\n\
-\n\
-\n\
-//-----------------------------------------------------------------------------------\n\
-// Constant buffer\n\
-//-----------------------------------------------------------------------------------\n\
-cbuffer VSConstantBuffer : register( b0 )\n\
-{\n\
-    matrix  Proj;   //  pojection matrix.\n\
-	float4  Color;  //  a color to modulate.\n\
-};\n\
-\n\
-\n\
-//-----------------------------------------------------------------------------------\n\
-// VSInput structure\n\
-//-----------------------------------------------------------------------------------\n\
-struct VSInput\n\
-{\n\
-    float3 Position : POSITION;     //	position\n\
-	float2 texCoord : TEXCOORD0;	//  texture coordinates\n\
-};\n\
-\n\
-//-----------------------------------------------------------------------------------\n\
-// GSPSInput structure\n\
-//-----------------------------------------------------------------------------------\n\
-struct GSPSInput\n\
-{\n\
-    float4 Position : SV_POSITION;  //  position\n\
-	float2 texCoord : TEXCOORD0;	//  texture coordinates\n\
-	float4 diffuse  : COLOR;        //  color of fonts.\n\
-};\n\
-\n\
-//-----------------------------------------------------------------------------------\n\
-//	entry point of the vertex shader.\n\
-//-----------------------------------------------------------------------------------\n\
-GSPSInput VSFunc( VSInput input )\n\
-{\n\
-    GSPSInput output = (GSPSInput)0;\n\
-\n\
-    // conver the input data to float4.\n\
-	float4 pos = float4( input.Position, 1.0f );\n\
-\n\
-	// transform to projection space.\n\
-    float4 projPos  = mul( Proj,  pos );\n\
-\n\
-	output.Position = projPos;\n\
-	output.texCoord = input.texCoord;\n\
-	output.diffuse  = Color;\n\
-    return output;\n\
-}\n\
-\n\
-//------------------------------------------------------------------------------------\n\
-//	Entry point of the pixel shader\n\
-//------------------------------------------------------------------------------------\n\
-float4 PSFunc( GSPSInput psin ) : SV_TARGET0\n\
-{\n\
-	float4 pixel = diffuseTexture.Sample(textureSampler, psin.texCoord);\n\
-    pixel = psin.diffuse * pixel;\n\
-	return pixel;\n\
-}\n\
-float4 PSFuncNoTex( GSPSInput psin ) : SV_TARGET0\n\
-{\n\
-	return psin.diffuse;\n\
-}\n\
-\n";
-#endif
-
-
 //  structure to keep a texture.
 struct SpriteTexture{
 	TCHAR				*pFilename;
@@ -528,6 +453,8 @@ HRESULT CD3D11Sprite::RestoreDeviceObjects(ID3D11DeviceContext *pContext){
 #include "d3d11spritevertexshadercode.inc"
 #include "d3d11spritepixelshadercode.inc"
 #include "d3d11spritenotexpixelshadercode.inc"
+#else
+#define FILENAME "res\\Sprite.fx"
 #endif
 void CD3D11Sprite::CompileShaderCodes(){
 
@@ -543,12 +470,23 @@ void CD3D11Sprite::CompileShaderCodes(){
 #else
 	HRESULT	hr;
 
-	BYTE *pSourceCode = (BYTE*)shadercode;
+	BYTE *pSourceCode = NULL;
+	INT  codeSize;
+	struct _stat tmpStat;
 
+	if (-1 !=_tstat(_T(FILENAME),&tmpStat)){
+		pSourceCode = new BYTE[tmpStat.st_size+3&0xfffffffc];
+		FILE *fp;
+		_tfopen_s(&fp,_T(FILENAME),_T("rb"));
+		fread((void*)pSourceCode,1,tmpStat.st_size,fp);
+		fclose(fp);
+	}else
+		return;
+	codeSize = tmpStat.st_size;
 	//  Compile shaders
 	ID3DBlob *pCode = NULL;
 	size_t len;
-	hr = CompileShaderFromMemory(pSourceCode,(DWORD)_countof(shadercode),"VSFunc","vs_4_0",&pCode);
+	hr = CompileShaderFromMemory(pSourceCode,(DWORD)codeSize,"VSFunc","vs_4_0",&pCode);
 	if (FAILED(hr))
 		goto EXIT;
 
@@ -559,7 +497,7 @@ void CD3D11Sprite::CompileShaderCodes(){
 	SAFE_RELEASE(pCode);
 
 	//  ピクセルシェーダの生成
-	hr = CompileShaderFromMemory(pSourceCode,(DWORD)_countof(shadercode),"PSFunc","ps_4_0",&pCode);
+	hr = CompileShaderFromMemory(pSourceCode,(DWORD)codeSize,"PSFunc","ps_4_0",&pCode);
 	if (FAILED(hr))
 		goto EXIT;
 
@@ -570,7 +508,7 @@ void CD3D11Sprite::CompileShaderCodes(){
 	SAFE_RELEASE(pCode);
 
 	//  ピクセルシェーダの生成
-	hr = CompileShaderFromMemory(pSourceCode,(DWORD)_countof(shadercode),"PSFuncNoTex","ps_4_0",&pCode);
+	hr = CompileShaderFromMemory(pSourceCode,(DWORD)codeSize,"PSFuncNoTex","ps_4_0",&pCode);
 	if (FAILED(hr))
 		goto EXIT;
 
@@ -589,7 +527,7 @@ EXIT:
 	if (FAILED(hr)){
 		RemoveShaderCodes();
 	}
-	//SAFE_DELETE_ARRAY(pSourceCode);
+	SAFE_DELETE_ARRAY(pSourceCode);
 #endif
 }
 
@@ -616,7 +554,7 @@ void CD3D11Sprite::SetTexture(INT no, TCHAR *pFilename){
 	int len;
 	SpriteTexture *pTextureNode;
 	if (no >= count){
-		int add = count - no + 1;
+		int add = no - count + 1;
 		for ( int i = 0; i < add ; ++i){
 			m_pSpriteTextures->push_back(NULL);
 		}
@@ -722,8 +660,8 @@ void    CD3D11Sprite::Render(ID3D11DeviceContext *pContext, FLOAT x, FLOAT y, FL
 		if (uiNumViewport != 1)
 			return;
 		//  transform 2D -> clipping space
-		FLOAT l = x;
-		FLOAT t = y;
+		FLOAT l = x + vp.TopLeftX;
+		FLOAT t = y + vp.TopLeftY;
 		FLOAT r = l + w;
 		FLOAT b = t + h;
 		FLOAT z = 1.0f;
