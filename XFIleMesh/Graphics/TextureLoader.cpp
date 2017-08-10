@@ -65,6 +65,7 @@ void CTextureLoader::Destroy(){
 		m_pInstance = NULL;
 	}
 }
+
 //
 //  function CopyBitmapSourceToTexture2D
 //    @param :
@@ -308,6 +309,81 @@ ERROR_EXIT:
 	return hr;
 }
 
+#ifdef __DIRECT2D__
+//
+//  method: CreateD2D1BitmapFromFile
+//    @param :
+//      pRenderTarget  : (in)Direct2D's RenderTarget
+//		pFilename : (in)pathname of the image file
+//	    ppBitmap  : (out) Load result
+//
+//   @return
+//      S_OK : succeeded
+//
+HRESULT CTextureLoader::CreateD2D1BitmapFromFile(ID2D1RenderTarget *pRenderTarget,TCHAR *pFilename, ID2D1Bitmap **ppBitmap){
+	HRESULT hr;
+	IWICBitmapDecoder *pDecoder = NULL;
+	IWICBitmapFrameDecode *pFrame = NULL;
+	WICPixelFormatGUID pixelFormat;
+	ID2D1Bitmap *pOutput = NULL;
+	IWICFormatConverter *pFormatConverter = NULL;
+	//  create texture using WIC
+	CTextureLoader *pInstance = GetInstance();
+
+	hr = pInstance->m_pFactory->CreateDecoderFromFilename(pFilename,0,
+		GENERIC_READ,WICDecodeMetadataCacheOnDemand,&pDecoder);
+	if (FAILED(hr))
+		goto ERROR_EXIT;
+	hr = pDecoder->GetFrame(0,&pFrame);
+	if (FAILED(hr))
+		goto ERROR_EXIT;
 
 
+	UINT width, height;
+	pFrame->GetSize(&width, &height);
 
+	//  Get the pixel format of the image
+	hr = pFrame->GetPixelFormat(&pixelFormat);
+	if (FAILED(hr))
+		goto ERROR_EXIT;
+	
+	if (pixelFormat != GUID_WICPixelFormat32bppBGRA){
+
+		hr = m_pInstance->m_pFactory->CreateFormatConverter(&pFormatConverter);
+		if (FAILED(hr))
+			goto ERROR_EXIT;
+		
+		//  convert the pixel format
+		hr = pFormatConverter->Initialize(pFrame,GUID_WICPixelFormat32bppBGRA, WICBitmapDitherTypeErrorDiffusion, 0, 0, WICBitmapPaletteTypeCustom);
+		if (FAILED(hr)){
+			SAFE_RELEASE(pFormatConverter);
+			goto ERROR_EXIT;
+		}
+		//  create D2DBitmap
+        hr = pRenderTarget->CreateBitmapFromWicBitmap(
+            pFormatConverter,
+            NULL,
+            &pOutput
+            );
+
+	}else{
+		//  create D2DBitmap
+        hr = pRenderTarget->CreateBitmapFromWicBitmap(
+            pFrame,
+            NULL,
+            &pOutput
+            );
+	}
+
+ERROR_EXIT:
+	if (FAILED(hr)){
+		SAFE_RELEASE(pOutput);
+	}else{
+		*ppBitmap = pOutput;
+	}
+	SAFE_RELEASE(pFormatConverter);
+	SAFE_RELEASE(pFrame);
+	SAFE_RELEASE(pDecoder)
+	return hr;
+}
+#endif

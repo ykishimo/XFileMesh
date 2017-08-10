@@ -132,6 +132,69 @@ ERROR_EXIT:
 	return hr;
 }
 
+HRESULT CreateD2D1BitmapFromTgaFile(ID2D1RenderTarget *pRenderTarget,TCHAR *pFilename, ID2D1Bitmap **ppBitmap){
+	FILE *fp = NULL;
+	errno_t err;
+	unsigned char header[256];
+	DWORD srcwidth,srcheight;
+	int pixelbits, row_pitch;
+	BOOL	bRLE = false, bBW = false;
+	DWORD	*pBuffer = NULL;
+	int		num_elements = 0;
+	ID2D1Bitmap *pOutput = NULL;
+	HRESULT	hr = E_FAIL;
+	int idlength;
+	BYTE src_descriptor;
+
+	err = _tfopen_s(&fp,pFilename,_T("rb"));
+
+	if (fp== NULL)
+		goto ERROR_EXIT;
+
+	//  read the header;
+	fread_s(header,sizeof(header),1,1,fp);
+	idlength = ((int)header[0]) & 255;
+	if (idlength == 0)
+		idlength = 18;
+	fread_s(header+1,sizeof(header)-1,idlength-1,1,fp);
+
+	hr = DecodeTgaHeader(header,&pixelbits,&bRLE,&bBW,&srcwidth,&srcheight, &src_descriptor);
+	if (FAILED(hr)){
+		goto ERROR_EXIT;
+	}
+
+	num_elements = srcwidth * srcheight;
+	pBuffer = new DWORD[num_elements];
+	row_pitch = srcwidth * sizeof(DWORD);
+
+	//  convert pixels
+	hr = ConvertPixelsFromTgaFile(fp,pBuffer,num_elements,bRLE,bBW,pixelbits);
+	if (FAILED(hr))
+		goto ERROR_EXIT;
+	D2D1_SIZE_U bitmapSize;
+	D2D1_BITMAP_PROPERTIES bitmapProperties;
+
+	bitmapSize.width = srcwidth;
+	bitmapSize.height = srcheight;
+	bitmapProperties.dpiX = 96.0f;
+	bitmapProperties.dpiY = 96.0f;
+	bitmapProperties.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
+	bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_STRAIGHT;
+	hr = pRenderTarget->CreateBitmap(bitmapSize,pBuffer,row_pitch,&bitmapProperties,&pOutput);
+
+	*ppBitmap = pOutput;
+	pOutput = NULL;
+
+ERROR_EXIT:
+	if (fp != NULL)
+		fclose(fp);
+
+	SAFE_RELEASE(pOutput);
+	SAFE_DELETE_ARRAY(pBuffer);
+	
+	return hr;
+}
+
 //
 //  Decode TGA header
 //	@param:
