@@ -25,6 +25,7 @@
 //
 HRESULT	DecodeTgaHeader(BYTE *pHeader, int *pPixelBits, BOOL *pRLE, BOOL *pBW, DWORD *pSrcWidth, DWORD *pSrcHeight, BYTE *pFlags);
 HRESULT ConvertPixelsFromTgaFile(FILE *fp,DWORD *pBuffer, DWORD numPixels, BOOL bRLE, BOOL bBW, INT numBitsPerPixel);
+
 HRESULT CopyTgaSourceToTexture2D(ID3D11DeviceContext *pContext, ID3D11Texture2D *pTexture, DWORD *pSource, UINT width, UINT height, UINT pitch, BYTE flags, FillMode fillmode);
 HRESULT StretchCopyTgaSourceToTexture2D(ID3D11DeviceContext *pContext, ID3D11Texture2D *pTexture, DWORD *pSource, UINT width, UINT height, UINT pitch, BYTE flags);
 
@@ -129,6 +130,180 @@ ERROR_EXIT:
 	SAFE_RELEASE(pDevice);
 	SAFE_DELETE_ARRAY(pBuffer);
 	
+	return hr;
+}
+
+//
+//  function CopyTgaSourceToTexture2D
+//    @param :
+//      pContext : Device's context
+//      pTexture : The Texture to copy to
+//	    pSource  : Source to copy
+//      width    : width of source image
+//      height   : height of source image
+//      flags    : tga flags
+//      fillmode : fillmode None / Linear
+//
+HRESULT CopyTgaSourceToTexture2D(ID3D11DeviceContext *pContext, ID3D11Texture2D *pTexture, DWORD *pSource, UINT width, UINT height, UINT pitch, BYTE flags, FillMode fillmode){
+	HRESULT hr = S_OK;
+	D3D11_TEXTURE2D_DESC td;
+	pTexture->GetDesc(&td);
+	if (fillmode != FillMode::None && (width != td.Width || height != td.Height)){
+		hr = StretchCopyTgaSourceToTexture2D(pContext,pTexture,pSource,width,height,pitch,flags);
+	}else{
+		D3D11_MAPPED_SUBRESOURCE hMappedResource;
+		D3D11_TEXTURE2D_DESC td;
+		BYTE *pRawSource = (BYTE*)pSource;
+		pTexture->GetDesc(&td);
+
+		hr = pContext->Map( 
+			pTexture,
+			0,
+			D3D11_MAP_WRITE_DISCARD,
+			0,
+			&hMappedResource );
+		if (SUCCEEDED(hr)){
+			//  fill pixels to texture
+			BYTE* pBits = (BYTE*)hMappedResource.pData;
+
+			UINT	x, y;
+			INT sourceX=0, sourceY=0;
+			int diffX=1, diffY=1;
+			INT	x2;
+			if (flags&0x10){
+				diffX = -1;
+				sourceX = width-1;
+			}
+			if (0 == (flags&0x20)){
+				sourceY = height - 1;
+				diffY = -1;
+			}
+
+			for(y=0; y < height; y++ )
+			{
+				DWORD* pDst32 = (DWORD*)(pBits+(y * hMappedResource.RowPitch));
+				x2 = sourceX;
+				for(x = 0; x < width; x++ )
+				{
+					*pDst32++ = *((DWORD*)(pRawSource+(x2*sizeof(DWORD))+(sourceY * pitch)));
+					x2 += diffX;
+				}
+				while(x < td.Width){
+					*pDst32++ = 0L;
+					++x;
+				}
+				sourceY += diffY;
+			}
+			while( y < td.Height){
+				DWORD* pDst32 = (DWORD*)(pBits+(y * hMappedResource.RowPitch));
+				for(x = 0; x < td.Width; x++ )
+				{
+					*pDst32++ = 0L;
+				}
+				++y;
+			}
+			pContext->Unmap(pTexture,0);
+		}
+	}
+	return hr;
+}
+//
+//  function StretchCopyTgaSourceToTexture2D
+//    Note: fill image with linear filter
+//    @param :
+//      pContext : Device's context
+//      pTexture : The Texture to copy to
+//	    pSource  : Source to copy
+//      width    : width of source image
+//      height   : height of source image
+//      flags    : tga flags
+//
+HRESULT StretchCopyTgaSourceToTexture2D(ID3D11DeviceContext *pContext, ID3D11Texture2D *pTexture, DWORD *pSource, UINT width, UINT height, UINT pitch, BYTE flags){
+	D3D11_MAPPED_SUBRESOURCE hMappedResource;
+	HRESULT hr;
+    D3D11_TEXTURE2D_DESC td;
+	BYTE *pRawSource = (BYTE*)pSource;
+
+	pTexture->GetDesc(&td);
+	DWORD sourceSize;
+	sourceSize = pitch * height;
+
+	hr = pContext->Map( 
+		pTexture,
+		0,
+		D3D11_MAP_WRITE_DISCARD,
+		0,
+		&hMappedResource );
+	if (SUCCEEDED(hr)){
+		//	fill pixels to texture
+		BYTE* pBits = (BYTE*)hMappedResource.pData;
+		BYTE* pBits2;
+		FLOAT sx, sy;
+		INT iSx1, iSx2;
+		INT iSy1, iSy2;
+		DWORD	tx, ty;
+		FLOAT u0,u1,t[4];
+		FLOAT r,g,b,a;
+		DWORD pixel[4];
+		DWORD pixel1;
+		FLOAT rTexWidth, rTexHeight;
+
+		rTexWidth = 1.0f / (FLOAT)td.Width;
+		rTexHeight = 1.0f / (FLOAT)td.Height;
+
+		FLOAT offsetX=0, offsetY=0;
+		FLOAT diffX=1, diffY=1;
+		if (flags&0x10){
+			diffX = -1;
+			offsetX = (FLOAT)(width-1);
+		}
+		if (0 == (flags&0x20)){
+			offsetY = FLOAT(height - 1);
+			diffY = -1;
+		}
+
+		for (ty = 0; ty < td.Height ; ++ty){
+			pBits2 = pBits;
+			sy = (FLOAT)ty * height * rTexHeight;
+			sy = sy * diffY + offsetY;
+			iSy1 = max(0,(INT)sy);
+			iSy2 = (iSy1 + 1)%height;
+			u1 = sy - (FLOAT)iSy1;
+			for (tx = 0; tx < td.Width ; ++tx){
+				sx = (FLOAT)tx * width * rTexWidth;
+				sx = sx * diffX + offsetX;
+				iSx1 = max(0,(INT)sx);
+				iSx2 = (iSx1 + 1)%width;
+				u0 = sx - (FLOAT)iSx1;
+				//  linear filter
+				pixel[0] = *(DWORD*)(pRawSource+(pitch*iSy1+4*iSx1));
+				pixel[1] = *(DWORD*)(pRawSource+(pitch*iSy1+4*iSx2));
+				pixel[2] = *(DWORD*)(pRawSource+(pitch*iSy2+4*iSx1));
+				pixel[3] = *(DWORD*)(pRawSource+(pitch*iSy2+4*iSx2));
+				t[0] = (1-u0)*(1-u1);
+				t[1] = u0*(1-u1);
+				t[2] = (1-u0)*u1;
+				t[3] = u0*u1;
+				r = g = b = a = 0.0f;
+				for (int i = 0; i < _countof(t) ; ++i){
+					a += ((pixel[i]>>24)&0xff) * t[i];
+					r += ((pixel[i]>>16)&0xff) * t[i];
+					g += ((pixel[i]>>8)&0xff) * t[i];
+					b += ((pixel[i])&0xff) * t[i];
+				}
+
+				pixel1  = (((int)a&0xff)<<24);
+				pixel1 += (((int)r&0xff)<<16);
+				pixel1 += (((int)g&0xff)<<8);
+				pixel1 += ( (int)b&0xff);
+				*(DWORD*)pBits2 = pixel1;
+
+				pBits2 += sizeof(DWORD);
+			}
+			pBits += hMappedResource.RowPitch;
+		}
+		pContext->Unmap(pTexture,0);
+	}
 	return hr;
 }
 
@@ -454,177 +629,5 @@ HRESULT ConvertPixelsFromTgaFile(FILE *fp,DWORD *pBuffer, DWORD numPixels, BOOL 
 	return S_OK;
 }
 
-//
-//  function CopyTgaSourceToTexture2D
-//    @param :
-//      pContext : Device's context
-//      pTexture : The Texture to copy to
-//	    pSource  : Source to copy
-//      width    : width of source image
-//      height   : height of source image
-//      flags    : tga flags
-//      fillmode : fillmode None / Linear
-//
-HRESULT CopyTgaSourceToTexture2D(ID3D11DeviceContext *pContext, ID3D11Texture2D *pTexture, DWORD *pSource, UINT width, UINT height, UINT pitch, BYTE flags, FillMode fillmode){
-	HRESULT hr = S_OK;
-	D3D11_TEXTURE2D_DESC td;
-	pTexture->GetDesc(&td);
-	if (fillmode != FillMode::None && (width != td.Width || height != td.Height)){
-		hr = StretchCopyTgaSourceToTexture2D(pContext,pTexture,pSource,width,height,pitch,flags);
-	}else{
-		D3D11_MAPPED_SUBRESOURCE hMappedResource;
-		D3D11_TEXTURE2D_DESC td;
-		BYTE *pRawSource = (BYTE*)pSource;
-		pTexture->GetDesc(&td);
 
-		hr = pContext->Map( 
-			pTexture,
-			0,
-			D3D11_MAP_WRITE_DISCARD,
-			0,
-			&hMappedResource );
-		if (SUCCEEDED(hr)){
-			//  fill pixels to texture
-			BYTE* pBits = (BYTE*)hMappedResource.pData;
-
-			UINT	x, y;
-			INT sourceX=0, sourceY=0;
-			int diffX=1, diffY=1;
-			INT	x2;
-			if (flags&0x10){
-				diffX = -1;
-				sourceX = width-1;
-			}
-			if (0 == (flags&0x20)){
-				sourceY = height - 1;
-				diffY = -1;
-			}
-
-			for(y=0; y < height; y++ )
-			{
-				DWORD* pDst32 = (DWORD*)(pBits+(y * hMappedResource.RowPitch));
-				x2 = sourceX;
-				for(x = 0; x < width; x++ )
-				{
-					*pDst32++ = *((DWORD*)(pRawSource+(x2*sizeof(DWORD))+(sourceY * pitch)));
-					x2 += diffX;
-				}
-				while(x < td.Width){
-					*pDst32++ = 0L;
-					++x;
-				}
-				sourceY += diffY;
-			}
-			while( y < td.Height){
-				DWORD* pDst32 = (DWORD*)(pBits+(y * hMappedResource.RowPitch));
-				for(x = 0; x < td.Width; x++ )
-				{
-					*pDst32++ = 0L;
-				}
-				++y;
-			}
-			pContext->Unmap(pTexture,0);
-		}
-	}
-	return hr;
-}
-//
-//  function StretchCopyTgaSourceToTexture2D
-//    Note: fill image with linear filter
-//    @param :
-//      pContext : Device's context
-//      pTexture : The Texture to copy to
-//	    pSource  : Source to copy
-//      width    : width of source image
-//      height   : height of source image
-//      flags    : tga flags
-//
-HRESULT StretchCopyTgaSourceToTexture2D(ID3D11DeviceContext *pContext, ID3D11Texture2D *pTexture, DWORD *pSource, UINT width, UINT height, UINT pitch, BYTE flags){
-	D3D11_MAPPED_SUBRESOURCE hMappedResource;
-	HRESULT hr;
-    D3D11_TEXTURE2D_DESC td;
-	BYTE *pRawSource = (BYTE*)pSource;
-
-	pTexture->GetDesc(&td);
-	DWORD sourceSize;
-	sourceSize = pitch * height;
-
-	hr = pContext->Map( 
-		pTexture,
-		0,
-		D3D11_MAP_WRITE_DISCARD,
-		0,
-		&hMappedResource );
-	if (SUCCEEDED(hr)){
-		//	fill pixels to texture
-		BYTE* pBits = (BYTE*)hMappedResource.pData;
-		BYTE* pBits2;
-		FLOAT sx, sy;
-		INT iSx1, iSx2;
-		INT iSy1, iSy2;
-		DWORD	tx, ty;
-		FLOAT u0,u1,t[4];
-		FLOAT r,g,b,a;
-		DWORD pixel[4];
-		DWORD pixel1;
-		FLOAT rTexWidth, rTexHeight;
-
-		rTexWidth = 1.0f / (FLOAT)td.Width;
-		rTexHeight = 1.0f / (FLOAT)td.Height;
-
-		FLOAT offsetX=0, offsetY=0;
-		FLOAT diffX=1, diffY=1;
-		if (flags&0x10){
-			diffX = -1;
-			offsetX = (FLOAT)(width-1);
-		}
-		if (0 == (flags&0x20)){
-			offsetY = FLOAT(height - 1);
-			diffY = -1;
-		}
-
-		for (ty = 0; ty < td.Height ; ++ty){
-			pBits2 = pBits;
-			sy = (FLOAT)ty * height * rTexHeight;
-			sy = sy * diffY + offsetY;
-			iSy1 = max(0,(INT)sy);
-			iSy2 = (iSy1 + 1)%height;
-			u1 = sy - (FLOAT)iSy1;
-			for (tx = 0; tx < td.Width ; ++tx){
-				sx = (FLOAT)tx * width * rTexWidth;
-				sx = sx * diffX + offsetX;
-				iSx1 = max(0,(INT)sx);
-				iSx2 = (iSx1 + 1)%width;
-				u0 = sx - (FLOAT)iSx1;
-				//  linear filter
-				pixel[0] = *(DWORD*)(pRawSource+(pitch*iSy1+4*iSx1));
-				pixel[1] = *(DWORD*)(pRawSource+(pitch*iSy1+4*iSx2));
-				pixel[2] = *(DWORD*)(pRawSource+(pitch*iSy2+4*iSx1));
-				pixel[3] = *(DWORD*)(pRawSource+(pitch*iSy2+4*iSx2));
-				t[0] = (1-u0)*(1-u1);
-				t[1] = u0*(1-u1);
-				t[2] = (1-u0)*u1;
-				t[3] = u0*u1;
-				r = g = b = a = 0.0f;
-				for (int i = 0; i < _countof(t) ; ++i){
-					a += ((pixel[i]>>24)&0xff) * t[i];
-					r += ((pixel[i]>>16)&0xff) * t[i];
-					g += ((pixel[i]>>8)&0xff) * t[i];
-					b += ((pixel[i])&0xff) * t[i];
-				}
-
-				pixel1  = (((int)a&0xff)<<24);
-				pixel1 += (((int)r&0xff)<<16);
-				pixel1 += (((int)g&0xff)<<8);
-				pixel1 += ( (int)b&0xff);
-				*(DWORD*)pBits2 = pixel1;
-
-				pBits2 += sizeof(DWORD);
-			}
-			pBits += hMappedResource.RowPitch;
-		}
-		pContext->Unmap(pTexture,0);
-	}
-	return hr;
-}
 

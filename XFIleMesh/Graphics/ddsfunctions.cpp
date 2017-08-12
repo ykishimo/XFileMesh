@@ -24,12 +24,12 @@
 //  prototypes.
 //
 DXGI_FORMAT	GetCompressedPixelFormatFromDdsHeader(DDSURFACEDESC2 *pddsc);
-HRESULT CreateTextureFromDdsRgbImage(ID3D11DeviceContext *pContext, DDSURFACEDESC2 *pddsc, VOID *pBuffer, ID3D11Texture2D **ppTexture);
-HRESULT CreateTextureFromDdsLinearImage(ID3D11DeviceContext *pContext, DDSURFACEDESC2 *pddsc, DXGI_FORMAT fmt, VOID *pBuffer, DWORD dwLinearSize, ID3D11Texture2D **ppTexture);
 
 HRESULT CreateBitmapFromDdsLinearImage(ID2D1RenderTarget *pRenderTarget,DDSURFACEDESC2 *pddsc, DXGI_FORMAT fmt, VOID *pBuffer, DWORD dwLinearSize, ID2D1Bitmap **ppBitmap);
 HRESULT CreateBitmapFromDdsRgbImage(ID2D1RenderTarget *pRenderTarget, DDSURFACEDESC2 *pddsc, VOID *pBuffer, ID2D1Bitmap **ppBitmap);
 
+HRESULT CreateTextureFromDdsRgbImage(ID3D11DeviceContext *pContext, DDSURFACEDESC2 *pddsc, VOID *pBuffer, ID3D11Texture2D **ppTexture);
+HRESULT CreateTextureFromDdsLinearImage(ID3D11DeviceContext *pContext, DDSURFACEDESC2 *pddsc, DXGI_FORMAT fmt, VOID *pBuffer, DWORD dwLinearSize, ID3D11Texture2D **ppTexture);
 
 //
 //	function CreateTextureFromDdsFile
@@ -173,135 +173,6 @@ ERROR_EXIT:
 
 	return hr;
 }
-//
-//	function CreateD2D1BitmapFromDdsFile
-//    @param :
-//      pRenderTarget  : (in)Direct2D's Render Target
-//		pFilename : (in)pathname of the image file
-//	    ppTexture : (out) Load result
-//      pSrcWidth : (out) width of the source image  ( != texture width )
-//      pSrcHight : (out)  height of the source image ( != texture height )
-//
-HRESULT CreateD2D1BitmapFromDdsFile(ID2D1RenderTarget *pRenderTarget,TCHAR *pFilename, ID2D1Bitmap **ppBitmap){
-	FILE *fp = NULL;
-	errno_t err;
-	unsigned char header[256];
-	DWORD	*pBuffer = NULL;
-	ID2D1Bitmap *pOutput = NULL;
-	HRESULT	hr = E_FAIL;
-	int idlength;
-	DDSURFACEDESC2	*pddsc = NULL;
-	DWORD		dwLinearSize = 0L;
-	DXGI_FORMAT	texFormat = DXGI_FORMAT_UNKNOWN;
-
-	err = _tfopen_s(&fp,pFilename,_T("rb"));
-
-	if (fp== NULL)
-		goto ERROR_EXIT;
-
-	//  read the header;
-	fread_s(header,sizeof(header),4,1,fp);
-	if (*(DWORD*)header != 0x20534444L)	//  check FOURCC "DDS "
-		goto ERROR_EXIT;
-
-	fread_s(header,sizeof(header),1,1,fp);
-	idlength = ((int)header[0]) & 255;
-	if (idlength != 0x7c)
-		goto ERROR_EXIT;
-	fread_s(header+1,sizeof(header)-1,idlength-1,1,fp);
-
-	pddsc = (DDSURFACEDESC2*)header;
-
-	if (pddsc->dwFlags & DDSD_PITCH){
-		dwLinearSize = (DWORD)pddsc->lPitch;
-		dwLinearSize *= pddsc->dwHeight;
-		pBuffer = new DWORD[(dwLinearSize+3) >> 2];
-		fread((void*)pBuffer,1,dwLinearSize, fp);
-		hr = CreateBitmapFromDdsRgbImage(pRenderTarget,pddsc,pBuffer,&pOutput);
-		if (SUCCEEDED(hr)){
-			*ppBitmap = pOutput;
-			pOutput = NULL;
-		}
-	}else if (pddsc->dwFlags & DDSD_LINEARSIZE){
-		dwLinearSize = (DWORD)pddsc->dwLinearSize;
-		pBuffer = new DWORD[(dwLinearSize+3) >> 2];
-		fread((void*)pBuffer,1,dwLinearSize, fp);
-		texFormat = GetCompressedPixelFormatFromDdsHeader(pddsc);
-		if (texFormat == DXGI_FORMAT_UNKNOWN){
-			hr = CreateBitmapFromDdsRgbImage(pRenderTarget,pddsc,pBuffer,&pOutput);
-			if (SUCCEEDED(hr)){
-				*ppBitmap = pOutput;
-				pOutput = NULL;
-			}
-			goto ERROR_EXIT;
-		}else{
-			hr= CreateBitmapFromDdsLinearImage(pRenderTarget,pddsc, texFormat,pBuffer, dwLinearSize, &pOutput);
-			SAFE_DELETE_ARRAY(pBuffer);
-			if (FAILED(hr))
-				goto ERROR_EXIT;
-
-			*ppBitmap = pOutput;
-			pOutput = NULL;
-		}
-	}else if ((pddsc->dwFlags & DDSD_WIDTH) && (pddsc->dwFlags & DDSD_HEIGHT)){
-		//  no pitch no linear size
-		texFormat = GetCompressedPixelFormatFromDdsHeader(pddsc);
-		if (texFormat != DXGI_FORMAT_UNKNOWN){
-
-			//	compressed format
-			switch(texFormat){
-			case	DXGI_FORMAT_BC1_UNORM:
-				dwLinearSize = pddsc->dwWidth * pddsc->dwHeight;
-				dwLinearSize = (dwLinearSize+1) >> 1;
-				break;
-			case	DXGI_FORMAT_BC2_UNORM:
-				dwLinearSize = pddsc->dwWidth * pddsc->dwHeight;
-				break;
-			case	DXGI_FORMAT_BC3_UNORM:
-				dwLinearSize = pddsc->dwWidth * pddsc->dwHeight;
-				break;
-			default:
-				goto ERROR_EXIT;
-			}
-			pBuffer = new DWORD[(dwLinearSize+3) >> 2];
-			fread((void*)pBuffer,1,dwLinearSize, fp);
-			hr= CreateBitmapFromDdsLinearImage(pRenderTarget,pddsc, texFormat,pBuffer, dwLinearSize, &pOutput);
-
-			SAFE_DELETE_ARRAY(pBuffer);
-			if (FAILED(hr))
-				goto ERROR_EXIT;
-
-			*ppBitmap = pOutput;
-			pOutput = NULL;
-
-		}else{
-
-			//  uncompressed format
-
-			DWORD pixelSize = pddsc->ddpfPixelFormat.dwRGBBitCount;
-			pixelSize = (pixelSize + 7) >> 3;	//	byte size.
-
-			dwLinearSize = pixelSize * pddsc->dwWidth * pddsc->dwHeight;
-			pBuffer = new DWORD[(dwLinearSize+3) >> 2];
-			fread((void*)pBuffer,1,dwLinearSize, fp);
-			hr = CreateBitmapFromDdsRgbImage(pRenderTarget,pddsc,pBuffer,&pOutput);
-			if (SUCCEEDED(hr)){
-				*ppBitmap = pOutput;
-				pOutput = NULL;
-			}
-		}
-		
-	}else
-		goto ERROR_EXIT;	//  can't calculate the size
-
-ERROR_EXIT:
-	if (fp != NULL)
-		fclose(fp);
-
-	SAFE_RELEASE(pOutput);
-	SAFE_DELETE_ARRAY(pBuffer);
-	return hr;
-}
 
 
 //
@@ -358,70 +229,6 @@ HRESULT CreateTextureFromDdsLinearImage(ID3D11DeviceContext *pContext, DDSURFACE
 	return hr;
 }
 
-
-//
-//	Create bitmap from DDS linear image
-//	@param
-//		pContext : (in) Device's context
-//		pddsc	 : (in) pointer to the direct draw surface
-//		fmt      : (in) pixel format
-//      pBuffer  : (in) image buffer
-//      dwLinearSize : (in) image data size
-//      ppBitmap     : (out) result bitmap
-//
-HRESULT CreateBitmapFromDdsLinearImage(ID2D1RenderTarget *pRenderTarget,DDSURFACEDESC2 *pddsc, DXGI_FORMAT fmt, VOID *pBuffer, DWORD dwLinearSize, ID2D1Bitmap **ppBitmap){
-	HRESULT  hr = E_FAIL;
-	ID2D1Bitmap *pOutput = NULL;
-	D2D1_SIZE_U bitmapSize;
-	D2D1_BITMAP_PROPERTIES bitmapProperties;
-	BYTE *pDest = NULL;
-	
-	bitmapSize.width = pddsc->dwWidth;
-	bitmapSize.height = pddsc->dwHeight;
-	bitmapProperties.dpiX = 96.0f;
-	bitmapProperties.dpiY = 96.0f;
-	bitmapProperties.pixelFormat.format = fmt;
-	bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_STRAIGHT;
-
-	hr = pRenderTarget->CreateBitmap(bitmapSize,pBuffer,0,&bitmapProperties,&pOutput);
-	if (SUCCEEDED(hr)){
-		*ppBitmap = pOutput;
-	}
-	SAFE_RELEASE(pOutput);
-	return hr;
-}
-
-
-
-//
-//  Get compressed pixel format from DDS Header
-//	@param
-//		pddsc : Direct Draw Surface Desc
-//	@return
-//		DXGI_FORMAT
-//	Note.
-//		if the format is uncompressed format returns DXGI_FORMAT_UNKNOWN
-//
-DXGI_FORMAT	GetCompressedPixelFormatFromDdsHeader(DDSURFACEDESC2 *pddsc){
-	DXGI_FORMAT	format = DXGI_FORMAT_UNKNOWN;
-
-	if (pddsc->ddpfPixelFormat.dwFlags & DDPF_FOURCC){
-		switch(pddsc->ddpfPixelFormat.dwFourCC){
-		case	FOURCC_DXT1:
-			format = DXGI_FORMAT_BC1_UNORM;
-			break;
-		case	FOURCC_DXT2:
-		case	FOURCC_DXT3:
-			format = DXGI_FORMAT_BC2_UNORM;
-			break;
-		case	FOURCC_DXT4:
-		case	FOURCC_DXT5:
-			format = DXGI_FORMAT_BC3_UNORM;
-			break;
-		}
-	}
-	return format;
-}
 
 //
 //  function CreateTextureFromDdsRgbImage
@@ -672,9 +479,202 @@ ERROR_EXIT:
 }
 
 //
+//  Get compressed pixel format from DDS Header
+//	@param
+//		pddsc : Direct Draw Surface Desc
+//	@return
+//		DXGI_FORMAT
+//	Note.
+//		if the format is uncompressed format returns DXGI_FORMAT_UNKNOWN
+//
+DXGI_FORMAT	GetCompressedPixelFormatFromDdsHeader(DDSURFACEDESC2 *pddsc){
+	DXGI_FORMAT	format = DXGI_FORMAT_UNKNOWN;
+
+	if (pddsc->ddpfPixelFormat.dwFlags & DDPF_FOURCC){
+		switch(pddsc->ddpfPixelFormat.dwFourCC){
+		case	FOURCC_DXT1:
+			format = DXGI_FORMAT_BC1_UNORM;
+			break;
+		case	FOURCC_DXT2:
+		case	FOURCC_DXT3:
+			format = DXGI_FORMAT_BC2_UNORM;
+			break;
+		case	FOURCC_DXT4:
+		case	FOURCC_DXT5:
+			format = DXGI_FORMAT_BC3_UNORM;
+			break;
+		}
+	}
+	return format;
+}
+
+//
+//	function CreateD2D1BitmapFromDdsFile
+//    @param :
+//      pRenderTarget  : (in)Direct2D's Render Target
+//		pFilename : (in)pathname of the image file
+//	    ppTexture : (out) Load result
+//      pSrcWidth : (out) width of the source image  ( != texture width )
+//      pSrcHight : (out)  height of the source image ( != texture height )
+//
+HRESULT CreateD2D1BitmapFromDdsFile(ID2D1RenderTarget *pRenderTarget,TCHAR *pFilename, ID2D1Bitmap **ppBitmap){
+	FILE *fp = NULL;
+	errno_t err;
+	unsigned char header[256];
+	DWORD	*pBuffer = NULL;
+	ID2D1Bitmap *pOutput = NULL;
+	HRESULT	hr = E_FAIL;
+	int idlength;
+	DDSURFACEDESC2	*pddsc = NULL;
+	DWORD		dwLinearSize = 0L;
+	DXGI_FORMAT	texFormat = DXGI_FORMAT_UNKNOWN;
+
+	err = _tfopen_s(&fp,pFilename,_T("rb"));
+
+	if (fp== NULL)
+		goto ERROR_EXIT;
+
+	//  read the header;
+	fread_s(header,sizeof(header),4,1,fp);
+	if (*(DWORD*)header != 0x20534444L)	//  check FOURCC "DDS "
+		goto ERROR_EXIT;
+
+	fread_s(header,sizeof(header),1,1,fp);
+	idlength = ((int)header[0]) & 255;
+	if (idlength != 0x7c)
+		goto ERROR_EXIT;
+	fread_s(header+1,sizeof(header)-1,idlength-1,1,fp);
+
+	pddsc = (DDSURFACEDESC2*)header;
+
+	if (pddsc->dwFlags & DDSD_PITCH){
+		dwLinearSize = (DWORD)pddsc->lPitch;
+		dwLinearSize *= pddsc->dwHeight;
+		pBuffer = new DWORD[(dwLinearSize+3) >> 2];
+		fread((void*)pBuffer,1,dwLinearSize, fp);
+		hr = CreateBitmapFromDdsRgbImage(pRenderTarget,pddsc,pBuffer,&pOutput);
+		if (SUCCEEDED(hr)){
+			*ppBitmap = pOutput;
+			pOutput = NULL;
+		}
+	}else if (pddsc->dwFlags & DDSD_LINEARSIZE){
+		dwLinearSize = (DWORD)pddsc->dwLinearSize;
+		pBuffer = new DWORD[(dwLinearSize+3) >> 2];
+		fread((void*)pBuffer,1,dwLinearSize, fp);
+		texFormat = GetCompressedPixelFormatFromDdsHeader(pddsc);
+		if (texFormat == DXGI_FORMAT_UNKNOWN){
+			hr = CreateBitmapFromDdsRgbImage(pRenderTarget,pddsc,pBuffer,&pOutput);
+			if (SUCCEEDED(hr)){
+				*ppBitmap = pOutput;
+				pOutput = NULL;
+			}
+			goto ERROR_EXIT;
+		}else{
+			hr= CreateBitmapFromDdsLinearImage(pRenderTarget,pddsc, texFormat,pBuffer, dwLinearSize, &pOutput);
+			SAFE_DELETE_ARRAY(pBuffer);
+			if (FAILED(hr))
+				goto ERROR_EXIT;
+
+			*ppBitmap = pOutput;
+			pOutput = NULL;
+		}
+	}else if ((pddsc->dwFlags & DDSD_WIDTH) && (pddsc->dwFlags & DDSD_HEIGHT)){
+		//  no pitch no linear size
+		texFormat = GetCompressedPixelFormatFromDdsHeader(pddsc);
+		if (texFormat != DXGI_FORMAT_UNKNOWN){
+
+			//	compressed format
+			switch(texFormat){
+			case	DXGI_FORMAT_BC1_UNORM:
+				dwLinearSize = pddsc->dwWidth * pddsc->dwHeight;
+				dwLinearSize = (dwLinearSize+1) >> 1;
+				break;
+			case	DXGI_FORMAT_BC2_UNORM:
+				dwLinearSize = pddsc->dwWidth * pddsc->dwHeight;
+				break;
+			case	DXGI_FORMAT_BC3_UNORM:
+				dwLinearSize = pddsc->dwWidth * pddsc->dwHeight;
+				break;
+			default:
+				goto ERROR_EXIT;
+			}
+			pBuffer = new DWORD[(dwLinearSize+3) >> 2];
+			fread((void*)pBuffer,1,dwLinearSize, fp);
+			hr= CreateBitmapFromDdsLinearImage(pRenderTarget,pddsc, texFormat,pBuffer, dwLinearSize, &pOutput);
+
+			SAFE_DELETE_ARRAY(pBuffer);
+			if (FAILED(hr))
+				goto ERROR_EXIT;
+
+			*ppBitmap = pOutput;
+			pOutput = NULL;
+
+		}else{
+
+			//  uncompressed format
+
+			DWORD pixelSize = pddsc->ddpfPixelFormat.dwRGBBitCount;
+			pixelSize = (pixelSize + 7) >> 3;	//	byte size.
+
+			dwLinearSize = pixelSize * pddsc->dwWidth * pddsc->dwHeight;
+			pBuffer = new DWORD[(dwLinearSize+3) >> 2];
+			fread((void*)pBuffer,1,dwLinearSize, fp);
+			hr = CreateBitmapFromDdsRgbImage(pRenderTarget,pddsc,pBuffer,&pOutput);
+			if (SUCCEEDED(hr)){
+				*ppBitmap = pOutput;
+				pOutput = NULL;
+			}
+		}
+		
+	}else
+		goto ERROR_EXIT;	//  can't calculate the size
+
+ERROR_EXIT:
+	if (fp != NULL)
+		fclose(fp);
+
+	SAFE_RELEASE(pOutput);
+	SAFE_DELETE_ARRAY(pBuffer);
+	return hr;
+}
+
+//
+//	Create bitmap from DDS linear image
+//	@param
+//      pRenderTarget  : (in)Direct2D's Render Target
+//		pddsc	 : (in) pointer to the direct draw surface
+//		fmt      : (in) pixel format
+//      pBuffer  : (in) image buffer
+//      dwLinearSize : (in) image data size
+//      ppBitmap     : (out) result bitmap
+//
+HRESULT CreateBitmapFromDdsLinearImage(ID2D1RenderTarget *pRenderTarget,DDSURFACEDESC2 *pddsc, DXGI_FORMAT fmt, VOID *pBuffer, DWORD dwLinearSize, ID2D1Bitmap **ppBitmap){
+	HRESULT  hr = E_FAIL;
+	ID2D1Bitmap *pOutput = NULL;
+	D2D1_SIZE_U bitmapSize;
+	D2D1_BITMAP_PROPERTIES bitmapProperties;
+	BYTE *pDest = NULL;
+	
+	bitmapSize.width = pddsc->dwWidth;
+	bitmapSize.height = pddsc->dwHeight;
+	bitmapProperties.dpiX = 96.0f;
+	bitmapProperties.dpiY = 96.0f;
+	bitmapProperties.pixelFormat.format = fmt;
+	bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_STRAIGHT;
+
+	hr = pRenderTarget->CreateBitmap(bitmapSize,pBuffer,0,&bitmapProperties,&pOutput);
+	if (SUCCEEDED(hr)){
+		*ppBitmap = pOutput;
+	}
+	SAFE_RELEASE(pOutput);
+	return hr;
+}
+
+
+//
 //  function CreateBitmapFromDdsRgbImage
 //	@param
-//      pContext  : (in)Device's context
+//      pRenderTarget  : (in)Direct2D's Render Target
 //		pddsc     : (in)direct draw surface desc
 //		pBuffer   : (in)image data
 //		ppBitmap  : (out) Load result

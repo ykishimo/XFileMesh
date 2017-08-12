@@ -1,5 +1,9 @@
 #pragma once
 struct IWICImagingFactory;
+struct ID3D11DeviceContext;
+struct ID3D11Texture2D;
+struct ID2D1RenderTarget;
+struct ID2D1Bitmap;
 
 typedef enum _FillMode{
 	None = 0,
