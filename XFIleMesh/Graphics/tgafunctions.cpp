@@ -349,18 +349,37 @@ HRESULT CreateD2D1BitmapFromTgaFile(ID2D1RenderTarget *pRenderTarget,TCHAR *pFil
 	D2D1_SIZE_U bitmapSize;
 	D2D1_BITMAP_PROPERTIES bitmapProperties;
 
-	// flip upside down
-	for (int y = 0; y < srcheight >> 1 ; ++y){
-		DWORD *pdwLine1 = (DWORD*)((BYTE*)pBuffer + row_pitch*y);
-		DWORD *pdwLine2 = (DWORD*)((BYTE*)pBuffer + row_pitch*(srcheight-1-y));
-		DWORD w;
-		for (int x = 0; x < srcwidth ; ++x){
-			w = *pdwLine1;
-			*pdwLine1++ = *pdwLine2;
-			*pdwLine2++ = w;
-		}
-	}
+	//	flip x or y
+	BYTE flag = src_descriptor ^ 0x20;
+	if (flag & 0x30){
+		DWORD *pBuffer2 = new DWORD[num_elements];
+		DWORD *pdwSource;
+		DWORD *pdwDest;
 
+		int diffX = 1, diffY = 1;
+		int sourceX = 0, sourceY = 0;
+		if (src_descriptor&0x10){
+			diffX = -1;						//  flip horizontally
+			sourceX = srcwidth-1;
+		}
+		if (0 == (src_descriptor&0x20)){
+			sourceY = srcheight - 1;		//  flip upside down
+			diffY = -1;
+		}
+		for (int y = 0; y < (int)srcheight ; ++y){
+			pdwSource = (DWORD*)(((BYTE*)pBuffer) + sourceY * row_pitch);
+			pdwSource += sourceX;
+			pdwDest   = (DWORD*)(((BYTE*)pBuffer2)+y*row_pitch);
+			for (int x = 0; x < (int)srcwidth ; ++x){
+				*pdwDest++ = *pdwSource;
+				pdwSource += diffX;
+			}
+			sourceY += diffY;
+		}
+		delete [] pBuffer;
+		pBuffer = pBuffer2;
+		pBuffer2 = NULL;
+	}
 	bitmapSize.width = srcwidth;
 	bitmapSize.height = srcheight;
 	bitmapProperties.dpiX = 96.0f;
