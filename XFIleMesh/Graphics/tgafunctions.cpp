@@ -349,12 +349,24 @@ HRESULT CreateD2D1BitmapFromTgaFile(ID2D1RenderTarget *pRenderTarget,TCHAR *pFil
 	D2D1_SIZE_U bitmapSize;
 	D2D1_BITMAP_PROPERTIES bitmapProperties;
 
+	// flip upside down
+	for (int y = 0; y < srcheight >> 1 ; ++y){
+		DWORD *pdwLine1 = (DWORD*)((BYTE*)pBuffer + row_pitch*y);
+		DWORD *pdwLine2 = (DWORD*)((BYTE*)pBuffer + row_pitch*(srcheight-1-y));
+		DWORD w;
+		for (int x = 0; x < srcwidth ; ++x){
+			w = *pdwLine1;
+			*pdwLine1++ = *pdwLine2;
+			*pdwLine2++ = w;
+		}
+	}
+
 	bitmapSize.width = srcwidth;
 	bitmapSize.height = srcheight;
 	bitmapProperties.dpiX = 96.0f;
 	bitmapProperties.dpiY = 96.0f;
 	bitmapProperties.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
-	bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_STRAIGHT;
+	bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_PREMULTIPLIED;
 	hr = pRenderTarget->CreateBitmap(bitmapSize,pBuffer,row_pitch,&bitmapProperties,&pOutput);
 
 	*ppBitmap = pOutput;
