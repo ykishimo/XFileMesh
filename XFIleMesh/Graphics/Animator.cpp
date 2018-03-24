@@ -348,9 +348,11 @@ HRESULT CAnimator::AddAnimationSets(AnimationSet **ppAnimationSet, INT num){
 		numAnimations = pTmpAnimationSet->numAnimations;
 		for (j = 0; j < numAnimations ; ++j){
 			pTmpAnimation = pTmpAnimationSet->ppAnimations[j];
-			id = pTmpAnimation->pSlaveMeshFrame->iFrameId;
-			if (id > maxAnimationId){
-				maxAnimationId = id;
+			if (pTmpAnimation->pSlaveMeshFrame != NULL){
+				id = pTmpAnimation->pSlaveMeshFrame->iFrameId;
+				if (id > maxAnimationId) {
+					maxAnimationId = id;
+				}
 			}
 		}
 		pAnimationContext->ppAnimationSets->push_back(pTmpAnimationSet);

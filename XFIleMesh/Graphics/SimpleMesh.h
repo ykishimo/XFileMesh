@@ -42,6 +42,7 @@ protected:
 	virtual HRESULT CreateFrameRendererDatas();
 	virtual HRESULT DeleteFrameRendererDatas();
 
+	virtual void ReleaseFrameRendererClients(FrameRendererData *pFrame);
 protected:
 	MeshFrame *m_pFrameRoot;
 
@@ -101,3 +102,68 @@ struct FrameRendererData{
 	ID3D11Buffer	*m_pVertexBuffer;
 	ID3D11Buffer	*m_pIndexBuffer;
 };
+
+//
+//	Ordering Table
+//
+__declspec(align(16)) struct OrderingTableItem{
+	DirectX::XMVECTOR	m_vecPolygonCenter;	//	not transformed
+	FLOAT	m_fZ;	//	transformed z
+	int	m_iIndex;
+	int m_iMatID;
+	void *operator new(size_t size) {
+		return _mm_malloc(size, 16);
+	}
+	void *operator new[](size_t size) {
+		return _mm_malloc(size, 16);
+	}
+		void operator delete(void *p) {
+		return _mm_free(p);
+	}
+};
+
+struct FrameRendererDataOT : public FrameRendererData{
+	OrderingTableItem *m_pItem;
+	int m_iNumItem;
+};
+
+__declspec(align(16)) class CSimpleOTMeshRenderer : virtual public CSimpleMeshRenderer
+{
+public:
+	CSimpleOTMeshRenderer();
+	virtual ~CSimpleOTMeshRenderer(void);
+
+	virtual void	Render(ID3D11DeviceContext *pContext);
+
+protected:
+
+	virtual HRESULT CreateFrameRendererDatas();
+	virtual void ReleaseFrameRendererClients(FrameRendererData *pFrame) override;
+	virtual void ZSortInViewSpace();
+
+	//  keep this 16-byte aligned for XMMATRIX
+	inline void *operator new(size_t size) {
+		return _mm_malloc(size, 16);
+	}
+	inline void operator delete(void *p) {
+		return _mm_free(p);
+	}
+};
+
+__declspec(align(16)) class CSimpleOTMesh : public virtual CSimpleOTMeshRenderer
+{
+public:
+	CSimpleOTMesh(TCHAR *pFilename);
+	virtual ~CSimpleOTMesh(void);
+
+	//  keep this 16-byte aligned for XMMATRIX
+	inline void *operator new(size_t size) {
+		return _mm_malloc(size, 16);
+	}
+	inline void operator delete(void *p) {
+		return _mm_free(p);
+	}
+protected:
+};
+
+

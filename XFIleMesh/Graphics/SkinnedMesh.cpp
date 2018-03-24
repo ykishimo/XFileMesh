@@ -390,8 +390,9 @@ void CSkinnedMesh::Render(ID3D11DeviceContext *pContext){
 
 		// プリミティブの種類を設定.
 		pContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-
-		for (DWORD nBone = 0; nBone < (DWORD)pContainer->numBones ; ++nBone){
+		if ((DWORD)pContainer->numBones == 0) {
+			cb.matWorld[0] = pFrameData->pFrame->CombinedMatrix;
+		}else for (DWORD nBone = 0; nBone < (DWORD)pContainer->numBones ; ++nBone){
 			DirectX::XMMATRIX *pmat = pContainer->ppBoneMatrixPointers[nBone];
 			if (pmat == NULL){
 				cb.matWorld[nBone] = DirectX::XMMatrixIdentity();

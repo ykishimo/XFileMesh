@@ -120,7 +120,7 @@ HRESULT CSimpleMeshRenderer::CreateFrameRendererDatas(){
 	return S_OK;
 }
 
-void ReleaseFrameRendererClients(FrameRendererData *pFrame){
+void CSimpleMeshRenderer::ReleaseFrameRendererClients(FrameRendererData *pFrame){
 	if (pFrame != NULL){
 		SAFE_RELEASE(pFrame->m_pIndexBuffer);
 		SAFE_RELEASE(pFrame->m_pVertexBuffer);
@@ -313,12 +313,12 @@ HRESULT CSimpleMeshRenderer::RestoreInstanceObjects(){
 		bd.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
 		bd.CPUAccessFlags = 0;
 
-		// サブリソースの設定.
+		// setup sub resources
 		D3D11_SUBRESOURCE_DATA initData;
 		ZeroMemory( &initData, sizeof( D3D11_SUBRESOURCE_DATA ) );
 		initData.pSysMem = pMesh->pVertices;
 		SimpleMeshVertex *pVertex = (SimpleMeshVertex*)pMesh->pVertices;
-		// 頂点バッファの生成.
+		// create the vertex buffer
 		SAFE_RELEASE(pFrameData->m_pVertexBuffer);
 		SAFE_RELEASE(pFrameData->m_pIndexBuffer);
 
@@ -594,9 +594,7 @@ void CSimpleMeshRenderer::Render(ID3D11DeviceContext *pContext){
 			pContext->DrawIndexed(faceCount * 3 , startIndex * 3, 0);
 		}
 	}
-
 	pContext->IASetIndexBuffer(NULL,DXGI_FORMAT_R16_UINT, 0);
-
 }
 
 void	CSimpleMeshRenderer::SetWorldMatrix(DirectX::XMMATRIX *pMatWorld){
@@ -711,4 +709,296 @@ void CSimpleMeshRenderer::RemoveShaderCodes(){
 	m_dwVertexShaderCodeSize = 0L;
 	m_dwPixelShaderCodeSize = 0L;
 	m_dwNoTexPixelShaderCodeSize = 0L;
+}
+
+//
+//  ctor for simple ot mesh
+//
+CSimpleOTMesh::CSimpleOTMesh(TCHAR *pFilename)
+{
+	AnimationSet **ppAnimationSets = NULL;
+	DWORD        dwNumAnimations;
+
+	if (SUCCEEDED(CXFileParser::CreateMesh(pFilename, &m_pFrameRoot, &ppAnimationSets, &dwNumAnimations))) {
+		//  Ignore animations
+		if (ppAnimationSets != NULL) {
+			for (DWORD i = 0; i < dwNumAnimations; ++i) {
+				delete ppAnimationSets[i];
+			}
+			delete ppAnimationSets;
+			ppAnimationSets = NULL;
+		}
+	}
+	if (FAILED(AdjustVertexFormat())) {
+		SAFE_DELETE(m_pFrameRoot);
+	}
+}
+CSimpleOTMesh::~CSimpleOTMesh() {
+	MeshFrame *pFrame = ReplaceRootFrame(NULL);
+	SAFE_DELETE(pFrame);
+}
+
+//
+//  ctor for simple ot mesh renderer
+//
+CSimpleOTMeshRenderer::CSimpleOTMeshRenderer() 
+: CSimpleMeshRenderer(){
+}
+CSimpleOTMeshRenderer::~CSimpleOTMeshRenderer(void) {
+}
+
+void	CSimpleOTMeshRenderer::Render(ID3D11DeviceContext *pContext) {
+
+	ZSortInViewSpace();	//  Do ZSort
+
+	FrameRendererDataOT *pFrameData = NULL;
+	MeshContainer *pContainer = NULL;
+	Mesh		*pMesh = NULL;
+	DWORD		dwNumVertices;
+
+	//
+	//　シェーダを設定して描画.
+	pContext->VSSetShader(m_pVertexShader, NULL, 0);
+	pContext->GSSetShader(NULL, NULL, 0);
+
+	SimpleMeshConstantBuffer	cb;
+	cb.matView = m_matView;
+	cb.matProj = m_matProjection;
+
+	cb.lightDir.x = m_vecLightDir.x;
+	cb.lightDir.y = m_vecLightDir.y;
+	cb.lightDir.z = m_vecLightDir.z;
+	cb.lightDir.w = 1.0f;
+
+	cb.lightDiffuse.x = m_vecLightDiffuse.x;
+	cb.lightDiffuse.y = m_vecLightDiffuse.y;
+	cb.lightDiffuse.z = m_vecLightDiffuse.z;
+	cb.lightDiffuse.w = 1.0f;
+
+	cb.lightAmbient.x = m_vecLightAmbient.x;
+	cb.lightAmbient.y = m_vecLightAmbient.y;
+	cb.lightAmbient.z = m_vecLightAmbient.z;
+	cb.lightAmbient.w = 1.0f;
+
+	for (DWORD i = 0; i < m_dwNumFrameRendererDatas; ++i) {
+		pFrameData = static_cast<FrameRendererDataOT*>(m_ppFrameRendererDatas[i]);
+		pContainer = pFrameData->pMeshContainer;
+		pMesh = pContainer->pMeshData;
+		dwNumVertices = pMesh->numVertices;
+		cb.matWorld = pFrameData->pFrame->CombinedMatrix * m_matWorld;
+
+		INT mat = -1;
+		// 入力アセンブラに頂点バッファを設定.
+		UINT stride = sizeof(SimpleMeshVertex);
+		UINT offset = 0;
+		pContext->IASetVertexBuffers(0, 1, &pFrameData->m_pVertexBuffer, &stride, &offset);
+		pContext->IASetIndexBuffer(pFrameData->m_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+
+		// 入力アセンブラに入力レイアウトを設定.
+		pContext->IASetInputLayout(m_pInputLayout);
+
+		// プリミティブの種類を設定.
+		pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		OrderingTableItem *pItem = pFrameData->m_pItem;
+		for (int i = 0; i < pFrameData->m_iNumItem; ++i) {
+			if (pItem->m_iMatID != mat) {
+				mat = pItem->m_iMatID;
+				Material *pMaterial = &pContainer->pMaterials[mat];
+				FLOAT	power = pMaterial->fPower;
+				cb.matDiffuse = pMaterial->vecDiffuse;
+				cb.matDiffuse.w = 1.0f;
+				cb.matEmmisive = pMaterial->vecEmmisive;
+				cb.matSpecular = pMaterial->vecSpecular;
+				cb.matPower = DirectX::XMFLOAT4(power, power, power, power);
+				// サブリソースを更新.
+				pContext->UpdateSubresource(m_pConstantBuffer, 0, NULL, &cb, 0, 0);
+
+				// 頂点シェーダに定数バッファを設定.
+				pContext->VSSetConstantBuffers(0, 1, &m_pConstantBuffer);
+
+				//  テクスチャをセット
+				CTextureNode *pNode = (CTextureNode*)pMaterial->pTextureData;
+				if (pNode != NULL) {
+					ID3D11ShaderResourceView* ppShaderResourceViews[] = { pNode->GetTextureShaderResourceView(), 0 };
+					ID3D11SamplerState	*ppSamplerStates[] = { m_pTextureSamplerState, 0 };
+					pContext->PSSetShaderResources(0, 1, ppShaderResourceViews);
+					pContext->PSSetSamplers(0, 1, ppSamplerStates);
+					pContext->PSSetShader(m_pPixelShader, NULL, 0);
+				}
+				else {
+					ID3D11ShaderResourceView* ppShaderResourceViews[] = { 0 };
+					ID3D11SamplerState	*ppSamplerStates[] = { m_pTextureSamplerState, 0 };
+					pContext->PSSetShaderResources(0, 1, ppShaderResourceViews);
+					pContext->PSSetSamplers(0, 1, ppSamplerStates);
+					pContext->PSSetShader(m_pNoTexPixelShader, NULL, 0);
+				}
+			}
+			pContext->DrawIndexed(3, pItem->m_iIndex * 3, 0);
+			++pItem;
+		}
+	}
+	pContext->IASetIndexBuffer(NULL, DXGI_FORMAT_R16_UINT, 0);
+
+}
+
+void CollectMeshContainerInFrameHierarchyOT(MeshFrame *pFrame, std::list<FrameRendererDataOT*> *pFrames) {
+	if (pFrame == NULL)
+		return;
+	if (pFrame->pFrameSibling != NULL) {
+		CollectMeshContainerInFrameHierarchyOT(pFrame->pFrameSibling, pFrames);
+	}
+	if (pFrame->pFrameFirstChild != NULL) {
+		CollectMeshContainerInFrameHierarchyOT(pFrame->pFrameFirstChild, pFrames);
+	}
+
+	MeshContainer *pContainer = pFrame->pMeshContainer;
+	while (pContainer != NULL) {
+		FrameRendererDataOT *pData = new FrameRendererDataOT;
+		Mesh *pMeshData = pContainer->pMeshData;
+		pData->pFrame = pFrame;
+		pData->pMeshContainer = pContainer;
+		pData->m_iNumItem = pMeshData->numIndices;	//  triangle count
+		pData->m_pItem = new OrderingTableItem[pData->m_iNumItem];
+
+		BYTE *pVertices = (BYTE*)pMeshData->pVertices;
+		INT	iStride = GetFVFSize(pMeshData->dwFVF);
+		INT count = pData->m_iNumItem;
+		INT index;
+		OrderingTableItem *pItem = pData->m_pItem;
+		DirectX::XMVECTOR xmvec,divisor;
+		divisor = DirectX::XMLoadFloat4(&DirectX::XMFLOAT4(
+			1.0f / 3.0f, 1.0f / 3.0f,
+				1.0f / 3.0f,
+				1.0f / 3.0f
+		));
+		//  scan the index buffer and store the face into
+		//  the ordering table.
+		for (int i = 0; i < count; ++i) {
+			//  Get the central position of the triangle
+			index = pMeshData->pIndices[i * 3];
+			xmvec = DirectX::XMLoadFloat3(((DirectX::XMFLOAT3*)(pVertices+iStride*index)));
+			index = pMeshData->pIndices[i * 3+1];
+			xmvec = DirectX::XMVectorAdd(xmvec,
+				DirectX::XMLoadFloat3(((DirectX::XMFLOAT3*)(pVertices + iStride*index)))
+			);
+			index = pMeshData->pIndices[i * 3 + 2];
+			xmvec = DirectX::XMVectorAdd(xmvec,
+				DirectX::XMLoadFloat3(((DirectX::XMFLOAT3*)(pVertices + iStride*index)))
+			);
+			xmvec = DirectX::XMVectorMultiply(xmvec, divisor);
+			pItem[i].m_vecPolygonCenter = xmvec;
+			pItem->m_iIndex = i;
+			pItem->m_fZ = 0.0f;		//	INVALID
+			pItem->m_iMatID = -1;	//	INVALID
+			++pItem;
+		}
+		//  update the materials
+		for (DWORD mat = 0; mat < pContainer->dwNumMaterials; ++mat) {
+			index = pMeshData->pMaterialAttributeRange[mat].FaceStart;
+			count = pMeshData->pMaterialAttributeRange[mat].FaceCount;
+			pItem = &pData->m_pItem[index];
+			for (int i = 0; i < count; ++i) {
+				pItem->m_iMatID = mat;
+				++pItem;
+			}
+		}
+		DirectX::XMFLOAT3 vec;
+		DirectX::XMFLOAT3 vecMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		DirectX::XMFLOAT3 vecMin(FLT_MAX, FLT_MAX, FLT_MAX);
+		count = pContainer->pMeshData->numVertices;
+		for (int i = 0; i < count; ++i) {
+			vec = *((DirectX::XMFLOAT3*)pVertices);
+			vecMax.x = max(vecMax.x, vec.x);
+			vecMax.y = max(vecMax.y, vec.y);
+			vecMax.z = max(vecMax.z, vec.z);
+			vecMin.x = min(vecMin.x, vec.x);
+			vecMin.y = min(vecMin.y, vec.y);
+			vecMin.z = min(vecMin.z, vec.z);
+			pVertices += iStride;
+		}
+		pData->m_vecObjCenter.x = (vecMax.x + vecMin.x)*0.5f;
+		pData->m_vecObjCenter.y = (vecMax.y + vecMin.y)*0.5f;
+		pData->m_vecObjCenter.z = (vecMax.z + vecMin.z)*0.5f;
+
+		pData->m_pIndexBuffer = NULL;
+		pData->m_pVertexBuffer = NULL;
+
+		pFrames->push_back(pData);
+		pContainer = pContainer->pNextMeshContainer;
+	}
+}
+//
+//	  Enflat the frames in tree structured hierachy 
+//  and place them into a simple array
+//
+HRESULT CSimpleOTMeshRenderer::CreateFrameRendererDatas() {
+	HRESULT hr = E_FAIL;
+	if (m_pFrameRoot) {
+		std::list<FrameRendererDataOT*> *pFrames = new std::list<FrameRendererDataOT*>();
+		CollectMeshContainerInFrameHierarchyOT(m_pFrameRoot, pFrames);
+		hr = E_FAIL;
+		if (pFrames->size() != 0) {
+
+			m_ppFrameRendererDatas = (FrameRendererData**)new FrameRendererDataOT*[pFrames->size()];
+			m_dwNumFrameRendererDatas = (DWORD)pFrames->size();
+			ZeroMemory(m_ppFrameRendererDatas, sizeof(FrameRendererDataOT*)*m_dwNumFrameRendererDatas);
+
+			int k = 0;
+			std::list<FrameRendererDataOT*>::iterator it = pFrames->begin();
+			while (it != pFrames->end()) {
+				m_ppFrameRendererDatas[k++] = *it;
+				*it = NULL;
+				it = pFrames->erase(it);
+			}
+
+			hr = S_OK;
+		}
+		delete pFrames;
+		return hr;
+	}
+	return S_OK;
+}
+
+void CSimpleOTMeshRenderer::ReleaseFrameRendererClients(FrameRendererData *pFrame) {
+	if (pFrame != NULL) {
+		CSimpleMeshRenderer::ReleaseFrameRendererClients(pFrame);
+		FrameRendererDataOT *pFrameOT = static_cast<FrameRendererDataOT *>(pFrame);
+		if (pFrameOT != NULL) {
+			SAFE_DELETE(pFrameOT->m_pItem);
+		}
+	}
+}
+
+static int ZSortPred(const void *_p1, const void *_p2) {
+	OrderingTableItem *p1, *p2;
+	p1 = (OrderingTableItem*)_p1;
+	p2 = (OrderingTableItem*)_p2;
+	if (p1->m_fZ < p2->m_fZ)
+		return 1;
+	else if (p1->m_fZ == p2->m_fZ)
+		return 0;
+	else
+		return -1;
+}
+
+//
+//	Do ZSort
+//
+void CSimpleOTMeshRenderer::ZSortInViewSpace() {
+	DirectX::XMMATRIX	matWorldView;
+	matWorldView = DirectX::XMMatrixMultiply(m_matWorld, m_matView);
+	
+	for (int i = 0; i < (int)m_dwNumFrameRendererDatas; ++i) {
+		FrameRendererDataOT *pData = static_cast<FrameRendererDataOT*>(m_ppFrameRendererDatas[i]);
+		INT count = pData->m_iNumItem;
+		OrderingTableItem *pItem = pData->m_pItem;
+		for (int j = 0; j < count ; ++j) {
+			DirectX::XMVECTOR vec =
+				DirectX::XMVector3Transform(pItem->m_vecPolygonCenter, matWorldView);
+			pItem->m_fZ = DirectX::XMVectorGetZ(vec);
+			++pItem;
+		}
+		qsort(pData->m_pItem, count, sizeof(OrderingTableItem), ZSortPred);
+	}
 }

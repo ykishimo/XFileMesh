@@ -2935,19 +2935,19 @@ HRESULT CXFileParser::EnflatLoadedFrames(){
 		delete m_pFileReadingContext->pListFramesLoaded;
 		m_pFileReadingContext->pListFramesLoaded = NULL;
 	}
-	return hr;
+return hr;
 }
 
 //
 //	Enflat animations
 //
-HRESULT CXFileParser::EnflatAnimations(){
+HRESULT CXFileParser::EnflatAnimations() {
 	HRESULT hr = E_FAIL;
 	int numAnimationSets;
 	int index = 0;
 	AnimationSet	*pNewAnimationSet = NULL;
 	std::list<TempAnimationSet*>::iterator itAnimationSets;
-	if (this->m_pFileReadingContext->pTempAnimationSetsLoaded->empty()){
+	if (this->m_pFileReadingContext->pTempAnimationSetsLoaded->empty()) {
 		hr = S_OK;
 		goto EXIT;
 	}
@@ -2955,9 +2955,9 @@ HRESULT CXFileParser::EnflatAnimations(){
 	this->m_iNumAnimationSets = numAnimationSets;
 	m_ppAnimationSets = new AnimationSet*[numAnimationSets];
 	itAnimationSets = m_pFileReadingContext->pTempAnimationSetsLoaded->begin();
-	while(itAnimationSets != m_pFileReadingContext->pTempAnimationSetsLoaded->end()){
+	while (itAnimationSets != m_pFileReadingContext->pTempAnimationSetsLoaded->end()) {
 		TempAnimationSet *pAnimationSet = *itAnimationSets;
-		if (NULL !=  pAnimationSet){
+		if (NULL != pAnimationSet) {
 			std::list<Animation*>::iterator itAnim = pAnimationSet->pAnimations->begin();
 			INT numAnimations = (INT)(*itAnimationSets)->pAnimations->size();
 			INT index2;
@@ -2967,7 +2967,7 @@ HRESULT CXFileParser::EnflatAnimations(){
 			pNewAnimationSet->pName = pAnimationSet->pName;
 			pAnimationSet->pName = NULL;
 			index2 = 0;
-			while(itAnim != pAnimationSet->pAnimations->end()){
+			while (itAnim != pAnimationSet->pAnimations->end()) {
 				pNewAnimationSet->ppAnimations[index2++] = (*itAnim);
 				*itAnim = NULL;
 				itAnim = pAnimationSet->pAnimations->erase(itAnim);
@@ -2990,49 +2990,54 @@ EXIT:
 //
 //	Confirm an animatin set
 //
-HRESULT CXFileParser::ConfirmAnimationSet(AnimationSet *pAnimationSet){
+HRESULT CXFileParser::ConfirmAnimationSet(AnimationSet *pAnimationSet) {
 	HRESULT hr = E_FAIL;
 	INT	i;
 	INT iFrame;
 	INT	maxAnimationFrame = 0;
 	INT maxKeyCount = 0;
 	Animation *pAnimation;
-	for (i = 0; i < pAnimationSet->numAnimations ; ++i){
+	for (i = 0; i < pAnimationSet->numAnimations; ++i) {
 		pAnimation = pAnimationSet->ppAnimations[i];
-		if (pAnimation){
+		if (pAnimation) {
 			INT keyCount = pAnimation->numPositionKeys;
-			if (pAnimation->pPositions&& keyCount > 0){
+			if (pAnimation->pPositions&& keyCount > 0) {
 				if (keyCount > maxKeyCount)
 					maxKeyCount = keyCount;
-				iFrame = pAnimation->pPositions[pAnimation->numPositionKeys-1].iFrame;
+				iFrame = pAnimation->pPositions[pAnimation->numPositionKeys - 1].iFrame;
 				if (iFrame > maxAnimationFrame)
 					maxAnimationFrame = iFrame;
 			}
 			keyCount = pAnimation->numRotationKeys;
-			if (pAnimation->pRotations && keyCount > 0){
+			if (pAnimation->pRotations && keyCount > 0) {
 				if (keyCount > maxKeyCount)
 					maxKeyCount = keyCount;
-				iFrame = pAnimation->pRotations[pAnimation->numRotationKeys-1].iFrame;
+				iFrame = pAnimation->pRotations[pAnimation->numRotationKeys - 1].iFrame;
 				if (iFrame > maxAnimationFrame)
 					maxAnimationFrame = iFrame;
 			}
 			keyCount = pAnimation->numScalingKeys;
-			if (pAnimation->pScalings && keyCount > 0){
+			if (pAnimation->pScalings && keyCount > 0) {
 				if (keyCount > maxKeyCount)
 					maxKeyCount = keyCount;
-				iFrame = pAnimation->pScalings[pAnimation->numScalingKeys-1].iFrame;
+				iFrame = pAnimation->pScalings[pAnimation->numScalingKeys - 1].iFrame;
 				if (iFrame > maxAnimationFrame)
 					maxAnimationFrame = iFrame;
 			}
 		}
 		pAnimation->pSlaveMeshFrame = NULL;
-		for (int i = 0; i < m_iNumFrames ; ++i){
-			if (m_ppFlattenFramePointers[i] != NULL){
-				if (0 == strcmp(pAnimation->pSlaveFrameName,m_ppFlattenFramePointers[i]->pName)){
+		//! todo: Improve this because this search algorithm is not efficient.
+		for (int i = 0; i < m_iNumFrames; ++i) {
+			if (m_ppFlattenFramePointers[i] != NULL) {
+				if (0 == strcmp(pAnimation->pSlaveFrameName, m_ppFlattenFramePointers[i]->pName)) {
 					pAnimation->pSlaveMeshFrame = m_ppFlattenFramePointers[i];
+					break;
 				}
 			}
 		}
+		//if (pAnimation->pSlaveMeshFrame == NULL){
+		//	_RPT1(_CRT_WARN, "%s not found", pAnimation->pSlaveFrameName);
+		//}
 	}
 	pAnimationSet->totalFrames = 0;
 	if (maxKeyCount > 0){

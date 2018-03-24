@@ -378,7 +378,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 					if (!GetAsyncKeyState(VK_SPACE))
 						ppMTAnimator[0]->Render(pContext);
 					else if (pBoneRenderer != NULL){
-						ppMTAnimator[0]->UpdateBones();
+ 						ppMTAnimator[0]->UpdateBones();
 						pBoneRenderer->SetProjectionMatrix(&matProj);
 						pBoneRenderer->SetViewMatrix(&matView);
 						pBoneRenderer->Render(pContext);

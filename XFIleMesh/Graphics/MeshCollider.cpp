@@ -44,12 +44,21 @@ __declspec(align(16)) struct COLLISIONVERTEX{
 
 };
 
-struct	COLLISIONINFO{
+__declspec(align(16)) struct	COLLISIONINFO{
 	XMVECTOR	n;		//	ñ ñ@ê¸
 	FLOAT		amount;	//	êHÇ¢çûÇ›ó 
 	XMVECTOR	positions[3];
 	XMVECTOR	normals[3];
 	XMVECTOR	nearest;
+	void *operator new(size_t size) {
+		return _mm_malloc(size, 16);
+	}
+	void *operator new[](size_t size) {
+		return _mm_malloc(size, 16);
+	}
+		void operator delete(void *p) {
+		return _mm_free(p);
+	}
 };
 
 //  local data structure
